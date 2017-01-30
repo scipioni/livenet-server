@@ -44,7 +44,7 @@ eval set -- "$ARGS"
 
 NAME=${LASTIMAGE}
 ARCH=amd64
-DISTR=xenial
+DISTR=trusty
 
 do_create() {
 IMAGE=$1
@@ -57,7 +57,7 @@ grep -q ${R}-dev /etc/fstab || (
 cat >> /etc/fstab <<QQFS
 
 # ${NAME}
-none ${R}-dev overlay noauto,x-systemd.automount,lowerdir=${R},upperdir=${R}-diff 0 0
+overlayfs   ${R}-dev overlayfs lowerdir=${R},upperdir=${R}-diff
 ${R}/boot ${BOOT}/${NAME} none auto,bind 0 0
 
 QQFS
@@ -70,7 +70,6 @@ mkdir -p ${IMAGES}/${NAME}-diff
 # schroot configuration
 grep -q "\[${NAME}-dev\]" /etc/schroot/schroot.conf || (
 cat >> /etc/schroot/schroot.conf <<QQSCHROOT
-
 [${NAME}-dev]
 type=directory
 profile=livenet
@@ -92,7 +91,7 @@ QQSCHROOT
 if [ -n "${COPY_FROM_CACHE}" ]; then
     cp -a ${IMAGES}/${NAME}.cache ${IMAGES}/${NAME}
 else
-    echo debootstrap --arch ${ARCH} ${DISTR} ${IMAGES}/${NAME} http://archive.ubuntu.com/ubuntu/
+    debootstrap --arch ${ARCH} ${DISTR} ${IMAGES}/${NAME} http://archive.ubuntu.com/ubuntu/
 fi
 
 # now make some operations to prepare nicer chroot
@@ -159,7 +158,7 @@ QWE
 chmod +x ${R}/usr/sbin/policy-rc.d
 
 # add ppa livenet
-echo "deb http://ppa.launchpad.net/livenet/client/ubuntu xenial main" > ${R}/etc/apt/sources.list.d/livenet-client-xenial.list
+echo "deb http://ppa.launchpad.net/livenet/client/ubuntu trusty main" > ${R}/etc/apt/sources.list.d/livenet-client-trusty.list
 chroot ${R} gpg --ignore-time-conflict --no-options --no-default-keyring --homedir /tmp/tmp.rpBbGhvMOp --no-auto-check-trustdb --trust-model always --keyring /etc/apt/trusted.gpg.d/livenet-client.gpg --primary-keyring /etc/apt/trusted.gpg.d/livenet-client.gpg --keyserver keyserver.ubuntu.com --recv-keys 1A9F6095
 
 echo "Updating packages ..."
@@ -250,7 +249,6 @@ do_reset() {
     [ -d ${NFSIMAGES}/${IMAGE}-test ] && \
         mount -o remount,del:${IMAGES}/${IMAGE}-diff ${NFSIMAGES}/${IMAGE}-test
     
-    #rm -fR ${ipath}-diff/*
     rm -fR ${ipath}-diff
     mkdir ${ipath}-diff
     mount ${ipath}-dev
@@ -573,7 +571,7 @@ while true; do
       --distr)
         shift
         DISTR=$1
-        if [ "${DISTR}" != "trusty" ] && [ "${DISTR}" != "xenial" ]; then
+        if [ "${DISTR}" != "trusty" ] && [ "${DISTR}" != "saucy" ]; then
             usage 
             exit 1
         fi
