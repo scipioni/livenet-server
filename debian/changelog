@@ -1,0 +1,53 @@
+livenet-server (5.0-0ppa1) xenial; urgency=medium
+
+  * xenial porting
+
+ -- Stefano Scipioni <scipio.it@gmail.com> Tue, 20 Sep 2016 11:08:42 +0200
+
+livenet-server (0.4.6-0ppa1) trusty; urgency=medium
+
+  * xorriso check, ip detected message
+  * bad argument detection
+  * commit now trace empty dir
+
+ -- Stefano Scipioni <scipio.it@gmail.com>  Thu, 20 Nov 2014 16:08:21 +0100
+
+livenet-server (0.4.3-0ppa1) trusty; urgency=medium
+
+  [ Stefano Scipioni ]
+  * /proc in first bootstrap
+
+ -- Stefano Scipioni <scipio.it@gmail.com> Thu, 23 Oct 2014 14:23:49 +0200
+
+livenet-server (0.4.1-0ppa1) trusty; urgency=medium
+
+  [ Stefano Scipioni ]
+  * ln-image --version
+  * bug on *-dev *-diff directories
+  * minor
+
+ -- Stefano Scipioni <scipio.it@gmail.com>  Wed, 09 Jul 2014 16:32:03 +0200
+
+livenet-server (0.4-0ppa1) trusty; urgency=medium
+
+  * Minor changes
+
+ -- Stefano Scipioni <scipio.it@gmail.com>  Tue, 08 Jul 2014 14:20:35 +0200
+
+livenet-server (0.3-0ppa1) trusty; urgency=medium
+
+  * trusty release
+
+ -- Stefano Scipioni <scipio.it@gmail.com>  Wed, 25 Jun 2014 13:53:02 +0200
+
+livenet-server (0.2-0ppa1) raring; urgency=low
+
+  * New package layout
+
+ -- Stefano Scipioni <scipio.it@gmail.com>  Thu, 31 Oct 2013 11:17:44 +0100
+
+livenet-server (0.1-2ppa4) raring; urgency=low
+
+  * Initial Release.
+
+ -- Stefano Scipioni <scipio.it@gmail.com>  Thu, 31 Oct 2013 09:48:56 +0100

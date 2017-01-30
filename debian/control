@@ -1,0 +1,15 @@
+Source: livenet-server
+Section: misc
+Priority: extra
+Maintainer: Stefano Scipioni <scipio.it@gmail.com>
+Build-Depends: debhelper (>= 8.0.0)
+Standards-Version: 3.9.4
+Homepage: http://www.livenet.org
+#Vcs-Git: git://git.debian.org/collab-maint/livenet-server-0.1.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/livenet-server-0.1.git;a=summary
+
+Package: livenet-server
+Architecture: all
+Depends: ${misc:Depends}, bash (>= 2.05a-11), debootstrap, schroot, syslinux, nfs-kernel-server, tftpd-hpa, xorriso, pigz
+Description: Livenet server
+ Install tools to create livenet server

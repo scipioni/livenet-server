@@ -1,0 +1,33 @@
+default menu.c32
+#prompt 0
+#timeout 10
+
+menu title PXE Special Boot Menu
+MENU AUTOBOOT Starting Livenet in # seconds
+
+
+label bootlocal
+   menu label ^Boot local disk
+   localboot 0
+
+label bootiso
+   menu label Boot ISO
+   kernel /memdisk
+   initrd /livenet.iso
+   append iso raw
+
+label -------
+
+label nfs_verbose
+   menu default
+   menu label Livenet diskless profile "default"
+   kernel /raring/kernel
+   append initrd=/raring/initrd ro livenet_root=192.168.2.1:/images/raring livenet_profile=default livenet_debug=true
+
+label install
+   menu label Livenet raring install profile "default"
+   kernel /raring/kernel
+   append initrd=/raring/initrd ro livenet_root=192.168.2.1:/images/raring livenet_profile=default splash quiet livenet_action=install livenet_action_end=halt
+
+label -------
+

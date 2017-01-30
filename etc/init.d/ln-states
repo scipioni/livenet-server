@@ -1,0 +1,45 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:          livenet states
+# Required-Start:    $all
+# Required-Stop:     $all
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: mount loop state filesystem
+# Description:       mount loop filesystem to /livenet/states from /livenet/states.img
+### END INIT INFO
+
+STATES=/livenet/states.img
+test -f /etc/default/livenet && . /etc/default/livenet
+LOOP=/dev/loop5
+
+set -e
+
+case "$1" in
+  start)
+        echo -n "Starting livenet states..."
+        losetup ${LOOP} ${STATES}
+        mount -o rw,noatime ${LOOP} ${STATES_MOUNT}
+        echo "OK"
+        ;;
+  stop)
+        echo -n "Stopping livenet states..."
+        umount ${STATES_MOUNT}
+        losetup -d ${LOOP}
+        echo "OK"
+        ;;
+
+  restart,force-reload)
+        ;;
+        
+
+  *)
+        echo "Usage: /etc/init.d/ln-states {start|stop}" >&2
+        exit 1
+        ;;
+           
+esac
+
+exit 0
+

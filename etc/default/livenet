@@ -1,0 +1,10 @@
+# folder that contains livenet system
+BASE=/livenet
+
+# 
+IMAGES=${BASE}/images
+NFSIMAGES=/images
+BOOT=${BASE}/boot
+STATES=${BASE}/states.img
+STATES_MOUNT=${BASE}/states
+BACKUP=${IMAGES}/backup

@@ -1,0 +1,593 @@
+#!/bin/bash
+
+PROGNAME=${0##*/}
+
+. /etc/default/livenet
+[ -f /etc/default/livenet.override ] && . /etc/default/livenet.override
+[ -z "${NFSIMAGES}" ] && NFSIMAGES=/images
+CACHE=${IMAGES}/.cache
+
+# recall LASTIMAGE
+if [ -f ${CACHE} ]; then
+   . ${CACHE}
+else
+   LASTIMAGE=$(find  ${IMAGES}  -maxdepth 1 -name "*-diff" -type d -exec basename \{\} \; | sed 's/-diff//' | sort | head -n1)
+   [ -n "${LASTIMAGE}" ] && echo "LASTIMAGE=${LASTIMAGE}" > ${CACHE}
+fi
+
+INTERFACE=${INTERFACE:=eth0}
+
+usage()
+{
+  cat << EOF
+        Usage: $PROGNAME <options>
+
+        Options:
+        --list: list available images
+        [--name {<image_name>|default}]: chroot into image_name_dev
+	[--name {<image_name>|default}] --backup: make a start point for remote installation
+        [--name {<image_name>|default}] --[commit|snap]: commit changes from <image_name-dev>
+        [--name {<image_name>|default}] --rollback: rollback changes
+        [--cache] --new-name <image_name> --distr {trusty|raring} [--arch {i386|amd64}] --create: create image
+        --create-states <size_MB>: create loop filesystem for states
+        --version,-v
+        --iso: make boot cd iso
+
+EOF
+}
+
+SHORTOPTS="hvn:"
+LONGOPTS="help,version,backup,commit,snap,name:,list,iso,rollback,create,arch:,distr:,new-name:,create-states:,cache"
+
+ARGS=$(getopt -s bash --options $SHORTOPTS --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
+eval set -- "$ARGS"
+
+NAME=${LASTIMAGE}
+ARCH=amd64
+DISTR=xenial
+
+do_create() {
+IMAGE=$1
+
+
+R=${IMAGES}/${NAME}
+
+# fstab overlay
+grep -q ${R}-dev /etc/fstab || (
+cat >> /etc/fstab <<QQFS
+
+# ${NAME}
+none ${R}-dev overlay noauto,x-systemd.automount,lowerdir=${R},upperdir=${R}-diff 0 0
+${R}/boot ${BOOT}/${NAME} none auto,bind 0 0
+
+QQFS
+)
+
+mkdir -p ${BOOT}/${NAME}
+mkdir -p ${IMAGES}/${NAME}-dev
+mkdir -p ${IMAGES}/${NAME}-diff
+
+# schroot configuration
+grep -q "\[${NAME}-dev\]" /etc/schroot/schroot.conf || (
+cat >> /etc/schroot/schroot.conf <<QQSCHROOT
+
+[${NAME}-dev]
+type=directory
+profile=livenet
+description=livenet development
+aliases=${NAME}
+directory=/livenet/images/${NAME}-dev
+
+[${NAME}-gold]
+type=directory
+profile=livenet
+description=livenet gold
+directory=/livenet/images/${NAME}
+
+QQSCHROOT
+
+)
+
+# image build
+if [ -n "${COPY_FROM_CACHE}" ]; then
+    cp -a ${IMAGES}/${NAME}.cache ${IMAGES}/${NAME}
+else
+    echo debootstrap --arch ${ARCH} ${DISTR} ${IMAGES}/${NAME} http://archive.ubuntu.com/ubuntu/
+fi
+
+# now make some operations to prepare nicer chroot
+
+# hosts
+cat > ${R}/etc/hosts <<QWK
+127.0.0.1   localhost livenet-host
+
+::1     localhost ip6-localhost ip6-loopback
+ff02::1     ip6-allnodes
+ff02::2     ip6-allrouters
+QWK
+
+# set sources.list
+cat > ${R}/etc/apt/sources.list <<QWE
+#############################################################
+################### OFFICIAL UBUNTU REPOS ###################
+#############################################################
+
+###### Ubuntu Main Repos
+deb http://archive.ubuntu.com/ubuntu/ ${DISTR} main restricted universe multiverse 
+
+###### Ubuntu Update Repos
+deb http://archive.ubuntu.com/ubuntu/ ${DISTR}-security main restricted universe multiverse 
+deb http://archive.ubuntu.com/ubuntu/ ${DISTR}-updates main restricted universe multiverse 
+deb http://archive.ubuntu.com/ubuntu/ ${DISTR}-proposed main restricted universe multiverse 
+deb http://archive.ubuntu.com/ubuntu/ ${DISTR}-backports main restricted universe multiverse 
+
+###### Ubuntu Partner Repo
+deb http://archive.canonical.com/ubuntu ${DISTR} partner
+QWE
+
+# for nfs mode
+echo 'rootfs / rootfs rw 0 0' > ${R}/etc/mtab
+
+# hostname is checked to check chroot environment (see /usr/sbin/policy-rc.d) 
+echo livenet-host > ${R}/etc/hostname
+
+# debian_chroot to have nicer prompt
+chroot ${R} lsb_release -c | awk '{print $2}' > ${R}/etc/debian_chroot
+
+# adjust language locale environment
+echo "Updating packages ..."
+chroot ${R} apt-get -q update >/dev/null
+chroot ${R} apt-get -y -q install locales dialog
+chroot ${R} locale-gen en_GB.UTF-8
+chroot ${R} locale-gen it_IT.UTF-8
+chroot ${R} update-locale LANG=it_IT.UTF-8 LANGUAGE=it:en_US:en
+
+# adjust timezone (later run dpkg-reconfigure tzdata)
+echo Europe/Rome > ${R}/etc/timezone
+cp ${R}/usr/share/zoneinfo/Europe/Rome ${R}/etc/localtime
+
+# avoid startup of services into chroot
+cat > ${R}/usr/sbin/policy-rc.d <<QWE
+#!/bin/sh
+
+# dpkg/apt not start any daemons when things are installed in the chroot
+
+if [ ! "\\\`cat /etc/hostname\\\`" = "\\\`hostname\\\`" ]; then
+    exit 101
+fi
+QWE
+chmod +x ${R}/usr/sbin/policy-rc.d
+
+# add ppa livenet
+echo "deb http://ppa.launchpad.net/livenet/client/ubuntu xenial main" > ${R}/etc/apt/sources.list.d/livenet-client-xenial.list
+chroot ${R} gpg --ignore-time-conflict --no-options --no-default-keyring --homedir /tmp/tmp.rpBbGhvMOp --no-auto-check-trustdb --trust-model always --keyring /etc/apt/trusted.gpg.d/livenet-client.gpg --primary-keyring /etc/apt/trusted.gpg.d/livenet-client.gpg --keyserver keyserver.ubuntu.com --recv-keys 1A9F6095
+
+echo "Updating packages ..."
+chroot ${R} apt-get -q update >/dev/null
+export DEBIAN_FRONTEND=noninteractive
+mount -t proc none ${R}/proc
+chroot ${R} apt-get -y install linux-generic
+umount ${R}/proc
+chroot ${R} apt-get -y install livenet-client
+echo > ${R}/etc/legal
+mount -a
+#
+
+}
+
+do_backup() {
+    IMAGE=$1
+
+    start_time=$(date +%s)
+
+    if [ ! -d ${IMAGES}/${IMAGE} ]; then
+        echo "ERRORE: ${IMAGES}/${IMAGE} not present"
+        exit 1
+    fi
+
+    . ${IMAGES}/${IMAGE}/etc/livenet/livenet.conf
+
+    cd ${IMAGES}/${IMAGE}
+    rm -fR tmp/*
+
+    version=0
+    [ -f ${ALLUPDATES}/list ] && version=`basename $( tail -n1 ${ALLUPDATES}/list )`
+    name=${IMAGE}_${version}.tar.gz
+
+    mkdir -p ${BACKUP}
+    if [ -f ${BACKUP}/${name} ]; then
+        echo "${BACKUP}/${name} exists, exit"
+        exit 0
+    fi
+
+    echo -n "Backing up $name ..."
+    trap "rm -f ${BACKUP}/tmp-image; exit 1" SIGINT
+    nice tar cpP --numeric-owner --one-file-system --use-compress-program=pigz \
+        --exclude=./var/cache/apt/archives/* \
+        --exclude=./var/cache/livenet/tmp* \
+        --exclude=./usr/local/src/* \
+        --exclude=./root/.netrc* \
+        --exclude=./livenet/.git* \
+        --exclude=./tmp/* \
+        --exclude=./root/.bash_history \
+        . 2>/dev/null > ${BACKUP}/tmp-image
+    mv ${BACKUP}/tmp-image ${BACKUP}/${name}
+    du -h ${BACKUP}/${name}
+    end_time=$(date +%s)
+    echo "Elapsed time: $(( $((end_time - start_time))/60 )) min."
+}
+
+do_chroot() {
+    cd /
+    schroot -c $1
+}
+
+do_list() {
+   find  ${IMAGES}  -maxdepth 1 -name "*-diff" -type d -exec basename \{\} \; | sed 's/-diff//' | sort
+}
+
+check_overlay_busy () {
+    ipath=$1
+    REMOUNT=$2
+    # aufs
+    # auplink ${ipath}-dev flush
+    sync
+    umount ${ipath}-dev 2>/dev/null
+    if [ ! $? = 0 ]; then
+        echo "overlay mount point ${ipath} is busy, exit"
+        exit 1
+    fi
+    umount ${ipath}-dev 2>/dev/null >/dev/null # bonifica multipli mount
+    [ -n "${REMOUNT}" ] && mount ${ipath}-dev
+}
+
+do_reset() {
+    IMAGE=$1
+    ipath=${IMAGES}/${IMAGE}
+    
+    check_overlay_busy ${ipath}
+
+    [ -d ${NFSIMAGES}/${IMAGE}-test ] && \
+        mount -o remount,del:${IMAGES}/${IMAGE}-diff ${NFSIMAGES}/${IMAGE}-test
+    
+    #rm -fR ${ipath}-diff/*
+    rm -fR ${ipath}-diff
+    mkdir ${ipath}-diff
+    mount ${ipath}-dev
+
+    [ -d ${NFSIMAGES}/${IMAGE}-test ] && \
+        mount -o remount,append:${IMAGES}/${IMAGE}-diff=rw ${NFSIMAGES}/${IMAGE}-test
+}
+
+
+do_commit() {
+    IMAGE=$1
+    SCRIPT=script.sh
+    ipath=${IMAGES}/${IMAGE}
+    tmp=${ipath}-dev/tmp
+
+    mountpoint -q ${ipath}-dev
+    if [ ! $? = 0 ]; then
+        mount ${ipath}-dev 
+        if [ ! $? = 0 ]; then
+            echo "ERROR: ${ipath}-dev is not mounted"
+            exit 1
+        fi
+    fi
+
+    check_overlay_busy ${ipath} --remount
+
+    echo "Checking consistency..."
+    chroot ${ipath}-dev /usr/sbin/ln-mng --clean
+
+    . ${ipath}-dev/etc/livenet/livenet.conf
+
+    UPDATES_ON_DEV=${ipath}-dev/${ALLUPDATES}
+    UPDATES_ON_DIFF=${ipath}-diff/${ALLUPDATES}
+
+    CURRENT=`tail -n1 ${UPDATES_ON_DEV}/list`
+    NEW=`date +"%Y%m%d-%H%M"`
+    NEED_REBOOT=
+
+    echo "Processing modifications newer than ${CURRENT} ..."
+
+    cd ${ipath}-diff
+    
+    # aufs
+    #find . -xdev \
+    #    ! -name '.wh..wh.*' \
+    #    -name '.wh.*' \
+    #    | sed -e 's/.wh.//' \
+    #    | sed -e 's/^\./rm -fR /' >> ${tmp}/${SCRIPT}
+    
+    # overlayfs
+    find -L . -xdev \
+        -type l -ilname "(overlay-whiteout)" \
+        | sed -e 's/^\./rm -fR /' >> ${tmp}/${SCRIPT}
+
+    [ -s ${tmp}/${SCRIPT} ] && echo " found $(grep '^rm' ${tmp}/${SCRIPT} | wc -l) delete"
+
+    # overlayfs
+    find . -xdev \
+        ! -type d \
+        ! -ilname "(overlay-whiteout)" \
+        ! -name '.*.swp' \
+        ! -name '.wh.*' \
+        ! -wholename './tmp/*' \
+        ! -wholename './var/cache/livenet/tmp*' \
+        ! -wholename './var/log/*' \
+        ! -wholename './var/cache/apt/archives/*' \
+        ! -wholename './etc/alternatives/libGL.so.1' \
+        ! -wholename './etc/alternatives/libglx.so' \
+        ! -wholename './usr/local/src/*' \
+        ! -wholename './etc/livenet/local/livenet.conf' \
+        ! -wholename './etc/alternatives/livenet.conf' \
+        ! -wholename './etc/debian_chroot' \
+        ! -wholename './var/lib/dpkg/lock' \
+        | sed -e 's/^\.\///' > ${tmp}/${NEW}
+    find . -xdev \
+        -type d -empty \
+        | sed -e 's/^\.\///' >> ${tmp}/${NEW}
+
+    if [ ! $(cat ${tmp}/${NEW} ${tmp}/${SCRIPT} | wc -l) -gt 0 ]; then
+        echo "No updates"
+        exit 0
+    fi
+    
+    mv ${tmp}/${NEW} ${UPDATES_ON_DEV}
+    echo " founded $(cat ${UPDATES_ON_DEV}/${NEW} | wc -l) modifications"
+    if [ -n "$(grep initrd.img ${UPDATES_ON_DEV}/${NEW})" ]; then 
+        echo "Detected initrd update, force reboot of clients"
+        chmod +t ${UPDATES_ON_DEV}/${NEW}
+        NEED_REBOOT=yes
+    fi
+
+    cd ${ipath}-dev
+    find ${ALLUPDATES} -name '2???????-????' -type f | sed -e 's/^\.\///' | sort > /${UPDATES_ON_DEV}/list
+    if [ -s ${tmp}/${SCRIPT} ]; then
+        mv ${tmp}/${SCRIPT} ${UPDATES_ON_DEV}/${NEW}.sh
+        touch -r ${UPDATES_ON_DEV}/${NEW}.sh ${UPDATES_ON_DEV}/${NEW}
+    fi
+
+    echo "Merging to ${ipath}"
+    echo " inspect at ${ipath}/${ALLUPDATES}/${NEW}"
+
+    # to permit umount
+    cd ${IMAGES}
+    check_overlay_busy ${ipath}
+
+    cd ${ipath}-diff
+    rsync --archive --quiet --hard-links --inplace --files-from=${UPDATES_ON_DIFF}/${NEW} ${ipath}-diff/ ${ipath}/
+    [ -n "${command}" ] && echo "${command}" > ${ipath}/${ALLUPDATES}/${NEW}.log
+    grep -v '\.git\/' ${UPDATES_ON_DIFF}/${NEW} > ${ipath}/${ALLUPDATES}/${NEW}
+    cp -au ${UPDATES_ON_DIFF}/list  ${ipath}/${ALLUPDATES}
+    if [ -s ${UPDATES_ON_DIFF}/${NEW}.sh ]; then
+        cp -au ${UPDATES_ON_DIFF}/${NEW}.sh  ${ipath}/${ALLUPDATES}
+        grep "^rm " ${UPDATES_ON_DIFF}/${NEW}.sh | chroot ${ipath} >/dev/null 2>&1
+        echo " inspect at ${ipath}/${ALLUPDATES}/${NEW}.sh"
+    fi
+
+    [ -n "${NEED_REBOOT}" ] && touch ${ipath}/${ALLUPDATES}/${NEW}.reboot
+
+    mount ${ipath}-dev
+    do_reset ${IMAGE}
+}
+
+do_create_states() {
+    SIZE=$1
+    . /etc/default/livenet
+
+    if [ -f ${STATES} ]; then
+        echo "ERROR: stop service and remove ${STATES} first"
+        exit 1
+    fi
+    
+    echo -n "Creating livenet states..."
+    dd if=/dev/zero of=${STATES} bs=1M count=${SIZE} >/dev/null
+    modprobe loop
+    losetup /dev/loop0 ${STATES}
+    mke2fs -j /dev/loop0 >/dev/null
+    losetup -d /dev/loop0
+    echo "Good, now is it possible to start this service"
+}
+
+do_iso() {
+    tmp=/tmp/cdroot
+    iso=${BOOT}/livenet.iso
+
+    which xorriso >/dev/null
+    if [ ! $? = 0 ]; then
+        echo "Error: xorriso package not present. Install it with 'apt-get install xorriso"
+        exit 1
+    fi
+
+    rm -fR ${tmp}
+    rm -f ${iso}
+    mkdir -p ${tmp}/boot/grub
+    cp /usr/share/grub/unicode.pf2 ${tmp}/boot
+
+    livenet_root_ip=$( ip -4 -o addr s dev ${INTERFACE} | grep -v secondary | cut -d" " -f7 | cut -d/ -f1 )
+    echo "Detected IP=${livenet_root_ip} on ${INTERFACE} interface"
+
+cat > ${tmp}/boot/grub/grub.cfg <<EOF
+if [ -s \$prefix/grubenv ]; then
+set have_grubenv=true
+load_env
+fi
+insmod part_msdos
+insmod ext2
+insmod vbe
+insmod png
+insmod coreui 
+if loadfont /boot/unicode.pf2 ; then
+  set gfxmode=1024x768
+  set gfxfont="Unifont Regular 16"
+  load_video
+  set gfxpayload=keep
+  insmod gfxterm
+  terminal_output gfxterm
+fi
+
+set timeout=100
+
+submenu "boot from hd" {
+menuentry "boot hd0,1" {
+set root=‘(hd0,1)’
+chainloader +1
+}
+menuentry "boot from hd1,1" –class os {
+set root=‘(hd1,1)’
+chainloader +1
+}
+}
+EOF
+    cd ${IMAGES}
+    for i in *-diff; do
+        release=${i/-diff/}
+
+        mount | grep -q ${release}-dev
+        [ $? = 0 ] || continue
+
+        mkdir -p ${tmp}/${release}
+        cp ${BOOT}/${release}/initrd ${tmp}/${release}/initrd
+        cp ${BOOT}/${release}/kernel ${tmp}/${release}/kernel
+        
+        for currprof in $( chroot ${IMAGES}/${release}-dev /usr/sbin/ln-mng --profiles-list ); do
+            echo "Processing: image=${release} profile=${currprof}"
+
+cat >> ${tmp}/boot/grub/grub.cfg <<EOF
+submenu "Livenet ${release} profile=${currprof}" {
+menuentry "NFS profile=default root=${livenet_root_ip}:/images/${release}" {
+
+  set profile=${currprof}
+  set livenet_root=${livenet_root_ip}:/images/${release}
+
+  set kernel=/${release}/kernel
+  set initrd=/${release}/initrd
+
+  search --set=kernel_path -f \$kernel
+  set root=\$kernel_path
+  linux (\$kernel_path)\$kernel ro livenet_root=\$livenet_root livenet_profile=\$profile
+  initrd (\$kernel_path)\$initrd
+  boot
+  }
+
+menuentry "INSTALL profile=${currprof} root=${livenet_root_ip}:/images/${release}" {
+
+  set profile=${currprof}
+  set livenet_root=${livenet_root_ip}:/images/${release}
+
+  set kernel=/${release}/kernel
+  set initrd=/${release}/initrd
+
+  search --set=kernel_path -f \$kernel
+  set root=\$kernel_path
+  linux (\$kernel_path)\$kernel ro livenet_root=\$livenet_root livenet_profile=\$profile livenet_action=install livenet_action_end=reboot
+  initrd (\$kernel_path)\$initrd
+  boot
+  }
+}
+
+EOF
+        done # for currprof...
+    done # for i...
+
+    grub-mkrescue --output=${iso} --modules="linux ext2 fshelp ls boot" ${tmp} >/dev/null 2>&1
+    if [ -f ${iso} ]; then
+        echo "Created iso image ${iso}"
+    else
+        echo "ERROR"
+    fi
+}
+
+while true; do
+   case $1 in
+      -h|--help)
+         usage
+         exit 0
+         ;;
+      -v|--version)
+        apt-cache show livenet-server | sed -n 's/^Version:.\([0-9\.]\+\)-.*/\1/p'
+        exit 0
+         ;;
+      --backup)
+        do_backup ${NAME}
+        exit $?
+        ;;
+      --commit|--snap)
+        do_commit ${NAME}
+        exit $?
+        ;;
+      --name|-n)
+        shift
+        NAME=$1
+        if [ ! -d ${IMAGES}/${NAME} ]; then
+            echo "ERRORE: ${IMAGES}/${NAME} not present"
+            exit 1
+        fi
+        echo "LASTIMAGE=${NAME}" > ${CACHE}
+        ;;
+      --cache)
+        COPY_FROM_CACHE=true
+        ;;
+      --new-name)
+        shift
+        NAME=$1
+        if [ -d ${IMAGES}/${NAME} ]; then
+            echo "ERRORE: ${IMAGES}/${NAME} exists, remove it before"
+            exit 1
+        fi
+        echo "LASTIMAGE=${NAME}" > ${CACHE}
+        ;;
+      --list)
+        do_list
+        exit 0
+        ;;
+      --rollback)
+        do_reset ${NAME}
+        exit 0
+        ;;
+      --iso)
+        do_iso
+        exit 0
+        ;;
+      --create)
+        do_create ${NAME}
+        exit 0
+        ;;
+      --create-states)
+        shift
+        SIZE=$1
+        echo "Creating states with size=${SIZE}" 
+        do_create_states ${SIZE}
+        exit $?
+        ;;
+      --arch)
+        shift
+        ARCH=$1
+        if [ "${ARCH}" != "amd64" ] && [ "${ARCH}" != "i386" ]; then
+            usage 
+            exit 1
+        fi
+        ;;
+      --distr)
+        shift
+        DISTR=$1
+        if [ "${DISTR}" != "trusty" ] && [ "${DISTR}" != "xenial" ]; then
+            usage 
+            exit 1
+        fi
+        ;;
+      *)
+        shift
+        if [ -n "$1" ]; then
+            echo "Error: bad argument"
+            exit 1
+        fi
+        break
+        ;;
+   esac
+   shift
+done
+
+do_chroot ${NAME}-dev
