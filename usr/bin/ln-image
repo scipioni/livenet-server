@@ -302,8 +302,7 @@ do_commit() {
     
     # overlayfs
     find -L . -xdev \
-        -type l -ilname "(overlay-whiteout)" \
-        | sed -e 's/^\./rm -fR /' >> ${tmp}/${SCRIPT}
+        -type c | sed -e 's/^\./rm -fR /' >> ${tmp}/${SCRIPT}
 
     [ -s ${tmp}/${SCRIPT} ] && echo " found $(grep '^rm' ${tmp}/${SCRIPT} | wc -l) delete"
 
