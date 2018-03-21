@@ -2,6 +2,8 @@
 
 PROGNAME=${0##*/}
 
+#set -x
+
 . /etc/default/livenet
 [ -f /etc/default/livenet.override ] && . /etc/default/livenet.override
 [ -z "${NFSIMAGES}" ] && NFSIMAGES=/images
@@ -44,41 +46,49 @@ eval set -- "$ARGS"
 
 NAME=${LASTIMAGE}
 ARCH=amd64
-DISTR=xenial
+DISTR=bionic
 
 do_create() {
+set -x
 IMAGE=$1
 
 
 R=${IMAGES}/${NAME}
 
+# TODO
 # fstab overlay
-grep -q ${R}-dev /etc/fstab || (
-cat >> /etc/fstab <<QQFS
+# grep -q ${R}-dev /etc/fstab || (
+# cat >> /etc/fstab <<QQFS
 
-# ${NAME}
-none ${R}-dev overlay noauto,x-systemd.automount,lowerdir=${R},upperdir=${R}-diff 0 0
-${R}/boot ${BOOT}/${NAME} none auto,bind 0 0
+# # ${NAME}
+# none ${R}-dev overlay noauto,x-systemd.automount,lowerdir=${R},upperdir=${R}-diff 0 0
+# ${R}/boot ${BOOT}/${NAME} none auto,bind 0 0
 
-QQFS
-)
+# QQFS
+# )
 
 mkdir -p ${BOOT}/${NAME}
-mkdir -p ${IMAGES}/${NAME}-dev
-mkdir -p ${IMAGES}/${NAME}-diff
+if [ -f ${IMAGES}/${NAME} ]; then
+    echo "Remove ${IMAGES}/${NAME} before"
+    #exit 1
+fi
+zfs create ${ZFSPOOL}${IMAGES}/${NAME}
+mount -o remount,exec,dev ${IMAGES}/${NAME}
+#mkdir -p ${IMAGES}/${NAME}-dev
+#mkdir -p ${IMAGES}/${NAME}-diff
 
 # schroot configuration
 grep -q "\[${NAME}-dev\]" /etc/schroot/schroot.conf || (
 cat >> /etc/schroot/schroot.conf <<QQSCHROOT
 
-[${NAME}-dev]
-type=directory
-profile=livenet
-description=livenet development
-aliases=${NAME}
-directory=/livenet/images/${NAME}-dev
+# [${NAME}-dev]
+# type=directory
+# profile=livenet
+# description=livenet development
+# aliases=${NAME}
+# directory=/livenet/images/${NAME}-dev
 
-[${NAME}-gold]
+[${NAME}]
 type=directory
 profile=livenet
 description=livenet gold
@@ -133,7 +143,8 @@ echo livenet-host > ${R}/etc/hostname
 
 # debian_chroot to have nicer prompt
 chroot ${R} lsb_release -c | awk '{print $2}' > ${R}/etc/debian_chroot
-
+echo $R
+exit 0
 # adjust language locale environment
 echo "Updating packages ..."
 chroot ${R} apt-get -q update >/dev/null

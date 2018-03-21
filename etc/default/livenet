@@ -1,3 +1,7 @@
+# zfs pool
+ZFSPOOL=rpool
+
+
 # folder that contains livenet system
 BASE=/livenet
 
