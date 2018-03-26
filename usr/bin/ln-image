@@ -19,7 +19,7 @@ else
    [ -n "${LASTIMAGE}" ] && echo "LASTIMAGE=${LASTIMAGE}" > ${CACHE}
 fi
 
-INTERFACE=${INTERFACE:=eth0}
+INTERFACE=${INTERFACE:=ens3}
 
 usage()
 {
@@ -602,4 +602,5 @@ while true; do
    shift
 done
 
-do_chroot ${NAME}-dev
+usage
+#do_chroot ${NAME}-dev
