@@ -42,12 +42,12 @@ initblk()
 			
 			echo "creazione dei volumi  di default"
 	
-			echo zfs create ${LNPZFS}/livenet
-      			zfs create ${LNPZFS}/livenet
-			zfs create ${LNPZFS}/${LNVZFS}/images
+			echo zfs create ${LNPZFS}/${LNVZFS}
+      			zfs create ${LNPZFS}/${LNVZFS}
 			echo zfs create ${LNPZFS}/${LNVZFS}/images
-			zfs create ${LNPZFS}/${LNVZFS}/boot
+			zfs create ${LNPZFS}/${LNVZFS}/images
 			echo zfs create ${LNPZFS}/${LNVZFS}/boot
+			zfs create ${LNPZFS}/${LNVZFS}/boot
 	
 		fi
 	
@@ -98,7 +98,7 @@ while true; do
             echo "Error: bad argument"
             exit 1
         fi
-        #break
+        break
         ;;
    esac
    shift
