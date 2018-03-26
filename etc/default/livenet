@@ -1,14 +1,25 @@
-# zfs pool
-ZFSPOOL=rpool
+# Livenet environment definition
+
+#blk device
+
+LNDB=/dev/sdb
+
+# ZFS POOL or VOLUME
+LNPZFS=LNPZFS
+LNVZFS=livenet
 
 
-# folder that contains livenet system
+# folder that contains livenet system (MOUNT POINT OF LNPZFS)
 BASE=/livenet
 
-# 
+# PATH FOR SPECIFIC FUNCTIONS
+
 IMAGES=${BASE}/images
-NFSIMAGES=/images
-BOOT=${BASE}/boot
-STATES=${BASE}/states.img
-STATES_MOUNT=${BASE}/states
 BACKUP=${IMAGES}/backup
+BOOT=${BASE}/boot
+
+#OLD config
+
+#NFSIMAGES=/images
+#STATES=${BASE}/states.img
+#STATES_MOUNT=${BASE}/states
