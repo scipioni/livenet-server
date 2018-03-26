@@ -1,13 +1,19 @@
+
+#!/bin/bash
+
 # Initialize livenet environment
 # Build livenet pool
 # create volume
 # install dhcp-server
 # configre trivial ftp
 
-#!/bin/bash
-
 #Initialize zpool for livenet
-#. /etc/default/livenet
+
+#echo "Check livenet parameteres in /etc/defaul/livenet"
+
+#vi /etc/default/livenet
+
+. /etc/default/livenet
 
 #Inizializza da dispositivo vergine
 #
@@ -18,17 +24,19 @@ initblk()
     echo $blkzfs
 	#controllo se il dispositivo esiste
 	if [ -f "$blk-zfs" ]; then
-		#se esiste controllo se esiste il punto di mount
+		#se esiste, controllo se esiste il punto di mount
 		if [ -d "/livenet" ]; then
 		 # Control will enter here if /livenet exists.
 			echo "Il  punto di mount predefinito esiste, rimuovere /livenet prima di proseguire"
+      exit 1
 		else
 		  # Control will enter here if /livenet not exists.
 			echo "Creazione del pool su $blk-zfs"
-			zpool create livenet $blk-zfs	
+			zpool create LNPZFS $blk-zfs	
 			echo "creazione dei volumi  di default"
-			zfs create livenet/images
-			zfs create livenet/boot
+      zfs create ${LNPZFS}/livenet
+			zfs create {LNPZFS}/${LNVZFS}/images
+			zfs create {LNPZFS}/${LNVZFS}/boot
 	
 		fi
 	
