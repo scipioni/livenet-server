@@ -1,0 +1,88 @@
+# Initialize livenet environment
+# Build livenet pool
+# create volume
+# install dhcp-server
+# configre trivial ftp
+
+#!/bin/bash
+
+#Initialize zpool for livenet
+#. /etc/default/livenet
+
+#Inizializza da dispositivo vergine
+#
+initblk()
+{
+	echo "Indica il percorso completo di un dispositivo a blocchi da dedicare per Livenet"
+	read -p "Percorso assoluto: " blkzfs
+    echo $blkzfs
+	#controllo se il dispositivo esiste
+	if [ -f "$blk-zfs" ]; then
+		#se esiste controllo se esiste il punto di mount
+		if [ -d "/livenet" ]; then
+		 # Control will enter here if /livenet exists.
+			echo "Il  punto di mount predefinito esiste, rimuovere /livenet prima di proseguire"
+		else
+		  # Control will enter here if /livenet not exists.
+			echo "Creazione del pool su $blk-zfs"
+			zpool create livenet $blk-zfs	
+			echo "creazione dei volumi  di default"
+			zfs create livenet/images
+			zfs create livenet/boot
+	
+		fi
+	
+	else
+		echo "Il dispositivo indicato non esiste"
+
+	fi
+
+}
+
+usage()
+{
+		 cat << EOF
+        Usage: ln-init <options>
+
+        Options:
+        --h: show this messages
+        --show: show curret livenet configuration
+        --initblk: initialize device block for livenet storage
+        --version,-v
+
+EOF
+}
+
+while true; do
+   case $1 in
+      -h|--help)
+         usage
+         exit 0
+         ;;
+      -v|--version)
+        apt-cache show livenet-server | sed -n 's/^Version:.\([0-9\.]\+\)-.*/\1/p'
+        exit 0
+         ;;
+      --initblk)
+		initblk
+		exit 0
+		;;
+      --show)
+      #show current configuration livenet
+      #path of storage
+      #network configuration
+        exit 0
+        ;;
+	   *)
+        #shift
+        if [ -n "$1" ]; then
+            echo "Error: bad argument"
+            exit 1
+        fi
+        break
+        ;;
+   esac
+   shift
+done
+
+usage

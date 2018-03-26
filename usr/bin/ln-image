@@ -6,7 +6,9 @@ PROGNAME=${0##*/}
 
 . /etc/default/livenet
 [ -f /etc/default/livenet.override ] && . /etc/default/livenet.override
-[ -z "${NFSIMAGES}" ] && NFSIMAGES=/images
+#[ -z "${NFSIMAGES}" ] && NFSIMAGES=/images
+
+#bootstrap cache
 CACHE=${IMAGES}/.cache
 
 # recall LASTIMAGE
@@ -67,26 +69,21 @@ R=${IMAGES}/${NAME}
 # QQFS
 # )
 
+
+echo "Create mount point for boot directory "
 mkdir -p ${BOOT}/${NAME}
 if [ -f ${IMAGES}/${NAME} ]; then
-    echo "Remove ${IMAGES}/${NAME} before"
-    #exit 1
+    echo " ${IMAGES}/${NAME} already exists"
+    exit 1
 fi
-zfs create ${ZFSPOOL}${IMAGES}/${NAME}
+
+echo "Create volume for ZFS "
+zfs create ${LNPZFS}/${LNVZFS}${IMAGES}/${NAME}
 mount -o remount,exec,dev ${IMAGES}/${NAME}
-#mkdir -p ${IMAGES}/${NAME}-dev
-#mkdir -p ${IMAGES}/${NAME}-diff
 
 # schroot configuration
 grep -q "\[${NAME}-dev\]" /etc/schroot/schroot.conf || (
 cat >> /etc/schroot/schroot.conf <<QQSCHROOT
-
-# [${NAME}-dev]
-# type=directory
-# profile=livenet
-# description=livenet development
-# aliases=${NAME}
-# directory=/livenet/images/${NAME}-dev
 
 [${NAME}]
 type=directory
@@ -102,7 +99,7 @@ QQSCHROOT
 if [ -n "${COPY_FROM_CACHE}" ]; then
     cp -a ${IMAGES}/${NAME}.cache ${IMAGES}/${NAME}
 else
-    echo debootstrap --arch ${ARCH} ${DISTR} ${IMAGES}/${NAME} http://archive.ubuntu.com/ubuntu/
+    debootstrap --arch ${ARCH} ${DISTR} ${IMAGES}/${NAME} http://archive.ubuntu.com/ubuntu/
 fi
 
 # now make some operations to prepare nicer chroot
@@ -143,8 +140,7 @@ echo livenet-host > ${R}/etc/hostname
 
 # debian_chroot to have nicer prompt
 chroot ${R} lsb_release -c | awk '{print $2}' > ${R}/etc/debian_chroot
-echo $R
-exit 0
+
 # adjust language locale environment
 echo "Updating packages ..."
 chroot ${R} apt-get -q update >/dev/null
@@ -169,9 +165,10 @@ fi
 QWE
 chmod +x ${R}/usr/sbin/policy-rc.d
 
+#TODO
 # add ppa livenet
-echo "deb http://ppa.launchpad.net/livenet/client/ubuntu xenial main" > ${R}/etc/apt/sources.list.d/livenet-client-xenial.list
-chroot ${R} gpg --ignore-time-conflict --no-options --no-default-keyring --homedir /tmp/tmp.rpBbGhvMOp --no-auto-check-trustdb --trust-model always --keyring /etc/apt/trusted.gpg.d/livenet-client.gpg --primary-keyring /etc/apt/trusted.gpg.d/livenet-client.gpg --keyserver keyserver.ubuntu.com --recv-keys 1A9F6095
+#echo "deb http://ppa.launchpad.net/livenet/client/ubuntu bionic main" > ${R}/etc/apt/sources.list.d/livenet-client-xenial.list
+#chroot ${R} gpg --ignore-time-conflict --no-options --no-default-keyring --homedir /tmp/tmp.rpBbGhvMOp --no-auto-check-trustdb --trust-model always --keyring /etc/apt/trusted.gpg.d/livenet-client.gpg --primary-keyring /etc/apt/trusted.gpg.d/livenet-client.gpg --keyserver keyserver.ubuntu.com --recv-keys 1A9F6095
 
 echo "Updating packages ..."
 chroot ${R} apt-get -q update >/dev/null
@@ -179,7 +176,9 @@ export DEBIAN_FRONTEND=noninteractive
 mount -t proc none ${R}/proc
 chroot ${R} apt-get -y install linux-generic
 umount ${R}/proc
-chroot ${R} apt-get -y install livenet-client
+#chroot ${R} apt-get -y install livenet-client
+echo "Installing livenet-client"
+
 echo > ${R}/etc/legal
 mount -a
 #
@@ -192,7 +191,7 @@ do_backup() {
     start_time=$(date +%s)
 
     if [ ! -d ${IMAGES}/${IMAGE} ]; then
-        echo "ERRORE: ${IMAGES}/${IMAGE} not present"
+        echo "ERROR: ${IMAGES}/${IMAGE} not present"
         exit 1
     fi
 
@@ -233,8 +232,10 @@ do_chroot() {
     schroot -c $1
 }
 
+#show list of images
 do_list() {
-   find  ${IMAGES}  -maxdepth 1 -name "*-diff" -type d -exec basename \{\} \; | sed 's/-diff//' | sort
+   #find  ${IMAGES}  -maxdepth 1 -name "*-diff" -type d -exec basename \{\} \; | sed 's/-diff//' | sort
+   ls ${IMAGES} | sort
 }
 
 check_overlay_busy () {
@@ -583,7 +584,7 @@ while true; do
       --distr)
         shift
         DISTR=$1
-        if [ "${DISTR}" != "trusty" ] && [ "${DISTR}" != "xenial" ]; then
+        if [ "${DISTR}" != "xenial" ] && [ "${DISTR}" != "bionic" ]; then
             usage 
             exit 1
         fi
@@ -592,6 +593,7 @@ while true; do
         shift
         if [ -n "$1" ]; then
             echo "Error: bad argument"
+            usage
             exit 1
         fi
         break
