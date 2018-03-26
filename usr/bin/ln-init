@@ -24,7 +24,7 @@ initblk()
 	read -p "Percorso assoluto: " blkzfs
     echo $blkzfs
 	#controllo se il dispositivo esiste
-	if [ -f "$blk-zfs" ]; then
+	if [ -b "$blkzfs" ]; then
 		#se esiste, controllo se esiste il punto di mount
 		if [ -d "/livenet" ]; then
 		 # Control will enter here if /livenet exists.
@@ -32,8 +32,9 @@ initblk()
       exit 1
 		else
 		  # Control will enter here if /livenet not exists.
-			echo "Creazione del pool su $blk-zfs"
-			zpool create LNPZFS $blk-zfs	
+			echo "Creazione del pool su $blkzfs"
+      sgdisk -a1 -n2:34:2047  -t2:EF02 ${blkzfs}
+			zpool create LNPZFS ${blkzfs}	
 			echo "creazione dei volumi  di default"
       zfs create ${LNPZFS}/livenet
 			zfs create {LNPZFS}/${LNVZFS}/images
