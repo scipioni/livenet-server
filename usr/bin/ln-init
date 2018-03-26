@@ -6,7 +6,7 @@
 # create volume
 # install dhcp-server
 # configre trivial ftp
-set -x
+
 #Initialize zpool for livenet
 
 #echo "Check livenet parameteres in /etc/defaul/livenet"
@@ -15,7 +15,6 @@ set -x
 
 . /etc/default/livenet
 
-exit 1
 #Inizializza da dispositivo vergine
 #
 initblk()
