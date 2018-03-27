@@ -56,8 +56,9 @@ upgrade(){
     rsync -avb usr/ /usr/
     
     echo "salvare il path di installazione"
+	
 	cat >> /etc/default/livenet <<QQSCHROOT
-INSTALLPATH="$(pwd)/livenet-server"
+INSTALLPATH="$(pwd)"
 
 QQSCHROOT
 }
