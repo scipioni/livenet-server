@@ -64,7 +64,7 @@ QQSCHROOT
 }
 
 dhcpinstall(){
-   . ./etc/default/livenet
+   . /etc/default/livenet
 
 	apt install -y isc-dhcp-server 
 	echo "configura l'interfaccia su cui si espone il dchp"
