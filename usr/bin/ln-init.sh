@@ -13,15 +13,36 @@
 
 #vi /etc/default/livenet
 
-. /etc/default/livenet
+install(){
 
+apt install -y  bash debootstrap schroot syslinux gdisk git wget curl nfs-kernel-server tftpd-hpa xorriso pigz pxelinux zfsutils-linux
+
+
+git clone https://github.com/scipioni/livenet-server.git
+git checkout bionic
+
+
+path="$(pwd)"
+echo ${path}
+
+cd ${path}/livenet-server
+rsync -avb etc/ /etc/
+rsync -avb usr/ /usr/
+
+
+}
+
+install
 #Inizializza da dispositivo vergine
 #
 initblk()
 {
+
+	. /etc/default/livenet
+
 	echo "Indica il percorso completo di un dispositivo a blocchi da dedicare per Livenet"
 	read -p "Percorso assoluto: " blkzfs
-    echo $blkzfs
+    	echo $blkzfs
 	#controllo se il dispositivo esiste
 	if [ -b "$blkzfs" ]; then
 		#se esiste, controllo se esiste il punto di mount
@@ -48,7 +69,24 @@ initblk()
 			zfs create ${LNPZFS}/${LNVZFS}/images
 			echo zfs create ${LNPZFS}/${LNVZFS}/boot
 			zfs create ${LNPZFS}/${LNVZFS}/boot
-	
+			
+			#installo i file per il boot di livenet via pxe
+			mkdir ${BOOT}/pxelinux.cfg
+			cp -a /usr/lib/syslinux/* /livenet/boot
+			cp /usr/lib/PXELINUX/pxelinux.0 ${BOOT}
+			mv ${BOOT}/modules/efi64/* ${BOOT}
+			
+			#creo file default 
+			cp ${path}/livenet-server/usr/share/doc/livenet-server/examples ${BOOT}/pxelinux.cfg/default 
+			
+			cat > /etc/default/tftp-hpa <<QWK
+TFTP_USERNAME="tftp"
+TFTP_DIRECTORY="${BOOT}"
+TFTP_ADDRESS="0.0.0.0:69"
+FTP_OPTIONS="--secure"
+QWK
+
+
 		fi
 	
 	else
