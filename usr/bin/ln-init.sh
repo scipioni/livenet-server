@@ -154,7 +154,8 @@ usage()
 
         Options:
         --h: show this messages
-		--install
+		--install: install livenet package
+		--upgrade: upgrade livenet package
         --show: show curret livenet configuration
         --initblk: initialize device block for livenet storage
         --version,-v
