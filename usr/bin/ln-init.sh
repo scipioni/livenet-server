@@ -85,7 +85,9 @@ dhcpinstall(){
 	echo "Modifica il gateway e l'ip statico dell'interfaccia"
 
 	read -p "Premi un tasto per configurare netcfg.conf, al termine esegui netplan apply"
+	nano /etc/netplan/01-netcfg.yaml
 
+	netplan apply
 	service isc-dhcp-server restart
 	service tftpd-hpa restart	
 
