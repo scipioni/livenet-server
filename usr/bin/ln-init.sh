@@ -119,7 +119,7 @@ initblk()
             
             #creo file default
             echo "Configurazione di TFTP"
-            cp ${INSTALLPATH}/usr/share/doc/livenet-server/examples ${BOOT}/pxelinux.cfg/default
+            cp ${INSTALLPATH}/usr/share/doc/livenet-server/examples/default.cfg ${BOOT}/pxelinux.cfg/default
             
 			cat > /etc/default/tftp-hpa <<QWK
 TFTP_USERNAME="tftp"
