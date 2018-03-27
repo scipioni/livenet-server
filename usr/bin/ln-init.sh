@@ -62,9 +62,13 @@ QQSCHROOT
 }
 
 dhcpinstall(){
+   . ./etc/default/livenet
+
 	apt install -y isc-dhcp-server 
 	echo "configura l'interfaccia su cui si espone il dchp"
-	
+	read -p "Indica l'interfaccia da usare per il server DHCP: " NIC
+	sed -i '/INTERFACESv4/c\INTERFACESv4="${NIC}"' /etc/default/isc-dhcp-server
+	cp -r ${INSTALLPATH}/usr/share/doc/livenet-server/examples/dhcpd.conf /etc/dhcp/dhcpd.conf	
 }
 #Inizializza da dispositivo vergine
 #
