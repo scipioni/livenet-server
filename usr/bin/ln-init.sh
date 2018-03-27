@@ -67,13 +67,28 @@ dhcpinstall(){
    . /etc/default/livenet
 
 	apt install -y isc-dhcp-server  
-	echo "configura l'interfaccia su cui si espone il dchp"
+	IPGW=$(/sbin/ip route | awk '/default/ { print $3 }')
+	NICDEFAULT=$(/sbin/ip route | awk '/default/ { print $5 }')
+	echo "Interfaccia di rete in uso:  ${NICDEFAULT}"
+	echo "Interfacce di rete usabili: "
+	echo $(ls /sys/class/net | grep en* | sort |  sed -e "s/\<${NICDEFAULT}\>//g")
+
+	echo "Configura l'interfaccia su cui si espone il dchp"
 	read -p "Indica l'interfaccia da usare per il server DHCP: " NIC
 	sed -i "/INTERFACESv4/c\INTERFACESv4="${NIC}"" /etc/default/isc-dhcp-server
 	cp -r ${INSTALLPATH}/usr/share/doc/livenet-server/examples/dhcpd.conf /etc/dhcp/dhcpd.conf
 	read -p "Premi un tasto per configurare dhcpd.conf"
 	cp /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.back
 	nano /etc/dhcp/dhcpd.conf
+	echo "configurazione delle interfacce di rete"
+	cp /etc/netplan/01-netcfg.yaml /etc/netplan/01-netcfg.yaml.back
+	echo "Modifica il gateway e l'ip statico dell'interfaccia"
+
+	read -p "Premi un tasto per configurare netcfg.conf, al termine esegui netplan apply"
+
+	service isc-dhcp-server restart
+	service tftpd-hpa restart	
+
 }
 #Inizializza da dispositivo vergine
 #
