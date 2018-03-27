@@ -112,7 +112,7 @@ initblk()
             #installo i file per il boot di livenet via pxe
             echo "Costruisco l'immagine di avvio di sistema via pxe a 64 bit"
             
-            mkdir ${LNPZFS}/${BOOT}/pxelinux.cfg
+            mkdir ${LNPZFS}${BOOT}/pxelinux.cfg
             cp -a /usr/lib/syslinux/modules/efi64/* ${BOOT}
             cp /usr/lib/PXELINUX/pxelinux.0 ${BOOT}
             #mv ${BOOT}/modules/efi64/* ${BOOT}
