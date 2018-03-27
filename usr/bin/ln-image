@@ -28,11 +28,11 @@ usage()
 
         Options:
         --list: list available images
-        [--name {<image_name>|default}]: chroot into image_name_dev
-	[--name {<image_name>|default}] --backup: make a start point for remote installation
+        [--name {<image_name>|default}]: chroot into image_name
+	    [--name {<image_name>|default}] --backup: make a start point for remote installation
         [--name {<image_name>|default}] --[commit|snap]: commit changes from <image_name-dev>
         [--name {<image_name>|default}] --rollback: rollback changes
-        [--cache] --new-name <image_name> --distr {trusty|raring} [--arch {i386|amd64}] --create: create image
+        [--cache] --new-name <image_name> --distr {bionic} [--arch {i386|amd64}] --create: create image
         --create-states <size_MB>: create loop filesystem for states
         --version,-v
         --iso: make boot cd iso
@@ -584,7 +584,7 @@ while true; do
       --distr)
         shift
         DISTR=$1
-        if [ "${DISTR}" != "xenial" ] && [ "${DISTR}" != "bionic" ]; then
+        if [ "${DISTR}" != "bionic" ] && [ "${DISTR}" != "bionic" ]; then
             usage 
             exit 1
         fi

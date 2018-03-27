@@ -11,25 +11,41 @@
 
 #echo "Check livenet parameteres in /etc/defaul/livenet"
 
-#vi /etc/default/livenet
+#vi /etc/default/livenet (    
+
+ printf '%s' "$GREEN"
+ printf '%s\n' ')\ )                                )'
+ printf '%s\n' '(()/( (    )      (           (   ( /('
+ printf '%s\n' '/(_)))\  /((    ))\  (      ))\  )\())'
+ printf '%s\n' '(_)) ((_)(_))\  /((_) )\ )  /((_)(_))/'
+ printf '%s\n' '| |   (_)_)((_)(_))  _(_/( (_))  | |_ '
+ printf '%s\n' '| |__ | |\ V / / -_)| ' \))/ -_) |  _|'
+ printf '%s\n' '|____||_| \_/  \___||_||_| \___|  \__|'
+ printf '%s\n' '									  '  
+                                        
+
+
+
+
+
 
 install(){
-
-apt install -y  bash debootstrap schroot syslinux gdisk git wget curl nfs-kernel-server tftpd-hpa xorriso pigz pxelinux zfsutils-linux
-
-
-git clone https://github.com/scipioni/livenet-server.git
-git checkout bionic
-
-
-path="$(pwd)"
-echo ${path}
-
-cd ${path}/livenet-server
-rsync -avb etc/ /etc/
-rsync -avb usr/ /usr/
-
-
+    
+    apt install -y  bash debootstrap schroot syslinux gdisk git wget curl nfs-kernel-server tftpd-hpa xorriso pigz pxelinux zfsutils-linux
+    
+    
+    git clone https://github.com/scipioni/livenet-server.git
+    git checkout bionic
+    
+    
+    path="$(pwd)"
+    echo ${path}
+    
+    cd ${path}/livenet-server
+    rsync -avb etc/ /etc/
+    rsync -avb usr/ /usr/
+    
+    
 }
 
 install
@@ -37,63 +53,67 @@ install
 #
 initblk()
 {
+    
+    . /etc/default/livenet
+    
+    echo "Indica il percorso completo di un dispositivo a blocchi da dedicare per Livenet"
+    read -p "Percorso assoluto: " blkzfs
+    echo $blkzfs
+    #controllo se il dispositivo esiste
+    if [ -b "$blkzfs" ]; then
+        #se esiste, controllo se esiste il punto di mount
+        if [ -d "/livenet" ]; then
+            # Control will enter here if /livenet exists.
+            echo "Il  punto di mount predefinito esiste, rimuovere /livenet prima di proseguire"
+        else
+            # Control will enter here if /livenet not exists.
+            echo "Pulizia del dispositivo"
+            echo "Rimozione del pool ${LNPZFS} se esistente..."
+            zpool destroy ${LNPZFS}
+            echo "Pulizia del disco..."
+            sgdisk --clear -g ${blkzfs}
+            echo "Creazione partizione primaria"
+            sgdisk -a1 -n2:34:2047  -t2:EF02 ${blkzfs}
+            echo "Creazione del pool ${blkzfs}..."
+            zpool create LNPZFS ${blkzfs}
+            
+            echo "creazione dei volumi  di default"
+            
+            echo zfs create ${LNPZFS}/${LNVZFS}
+            zfs create ${LNPZFS}/${LNVZFS}
+            echo zfs create ${LNPZFS}/${LNVZFS}/images
+            zfs create ${LNPZFS}/${LNVZFS}/images
+            echo zfs create ${LNPZFS}/${LNVZFS}/boot
+            zfs create ${LNPZFS}/${LNVZFS}/boot
+            
+            #installo i file per il boot di livenet via pxe
+			echo "Costruisco l'immagine di avvio di sistema via pxe"
 
-	. /etc/default/livenet
-
-	echo "Indica il percorso completo di un dispositivo a blocchi da dedicare per Livenet"
-	read -p "Percorso assoluto: " blkzfs
-    	echo $blkzfs
-	#controllo se il dispositivo esiste
-	if [ -b "$blkzfs" ]; then
-		#se esiste, controllo se esiste il punto di mount
-		if [ -d "/livenet" ]; then
-		 # Control will enter here if /livenet exists.
-			echo "Il  punto di mount predefinito esiste, rimuovere /livenet prima di proseguire"
-		else
-		  # Control will enter here if /livenet not exists.
-			echo "Pulizia del dispositivo"
-			echo "Rimozione del pool ${LNPZFS} se esistente..."
-			zpool destroy ${LNPZFS}
-			echo "Pulizia del disco..."
-			sgdisk --clear -g ${blkzfs}
-			echo "Creazione partizione primaria"
-			sgdisk -a1 -n2:34:2047  -t2:EF02 ${blkzfs}
-			echo "Creazione del pool ${blkzfs}..."
-			zpool create LNPZFS ${blkzfs}	
-			
-			echo "creazione dei volumi  di default"
-	
-			echo zfs create ${LNPZFS}/${LNVZFS}
-      			zfs create ${LNPZFS}/${LNVZFS}
-			echo zfs create ${LNPZFS}/${LNVZFS}/images
-			zfs create ${LNPZFS}/${LNVZFS}/images
-			echo zfs create ${LNPZFS}/${LNVZFS}/boot
-			zfs create ${LNPZFS}/${LNVZFS}/boot
-			
-			#installo i file per il boot di livenet via pxe
-			mkdir ${BOOT}/pxelinux.cfg
-			cp -a /usr/lib/syslinux/* /livenet/boot
-			cp /usr/lib/PXELINUX/pxelinux.0 ${BOOT}
-			mv ${BOOT}/modules/efi64/* ${BOOT}
-			
-			#creo file default 
-			cp ${path}/livenet-server/usr/share/doc/livenet-server/examples ${BOOT}/pxelinux.cfg/default 
-			
+            mkdir ${BOOT}/pxelinux.cfg
+            cp -a /usr/lib/syslinux/* /livenet/boot
+            cp /usr/lib/PXELINUX/pxelinux.0 ${BOOT}
+            mv ${BOOT}/modules/efi64/* ${BOOT}
+            
+            #creo file default
+            echo "Configurazione di TFTP"
+			cp ${path}/livenet-server/usr/share/doc/livenet-server/examples ${BOOT}/pxelinux.cfg/default
+            
 			cat > /etc/default/tftp-hpa <<QWK
 TFTP_USERNAME="tftp"
 TFTP_DIRECTORY="${BOOT}"
 TFTP_ADDRESS="0.0.0.0:69"
 FTP_OPTIONS="--secure"
 QWK
-
-
-		fi
-	
-	else
-		echo "Il dispositivo indicato non esiste"
-
-	fi
-
+            
+            #configurazione di DHCP
+			
+        fi
+        
+    else
+        echo "Il dispositivo indicato non esiste"
+        
+    fi
+    
 }
 
 usage()
@@ -111,35 +131,35 @@ EOF
 }
 
 while true; do
-   case $1 in
-      -h|--help)
-         usage
-         exit 0
-         ;;
-      -v|--version)
-        apt-cache show livenet-server | sed -n 's/^Version:.\([0-9\.]\+\)-.*/\1/p'
-        exit 0
-         ;;
-      --initblk)
-		initblk
-		exit 0
-		;;
-      --show)
-      #show current configuration livenet
-      #path of storage
-      #network configuration
-        exit 0
+    case $1 in
+        -h|--help)
+            usage
+            exit 0
         ;;
-	   *)
-        #shift
-        if [ -n "$1" ]; then
-            echo "Error: bad argument"
-            exit 1
-        fi
-        break
+        -v|--version)
+            apt-cache show livenet-server | sed -n 's/^Version:.\([0-9\.]\+\)-.*/\1/p'
+            exit 0
         ;;
-   esac
-   shift
+        --initblk)
+            initblk
+            exit 0
+        ;;
+        --show)
+            #show current configuration livenet
+            #path of storage
+            #network configuration
+            exit 0
+        ;;
+        *)
+            #shift
+            if [ -n "$1" ]; then
+                echo "Error: bad argument"
+                exit 1
+            fi
+            break
+        ;;
+    esac
+    shift
 done
 
 usage
