@@ -20,35 +20,47 @@ printf '%s\n' '/ /___| | \ V /|  __/| | | ||  __/| |_ '
 printf '%s\n' '\____/|_|  \_/  \___||_| |_| \___| \__|'
 printf '%s\n' ''
                                        
-
+echo "Utilità di installazione del sistema"
   
                                         
 
-
-
-
-
-
 install(){
-    
-    apt install -y  bash debootstrap schroot syslinux gdisk git wget curl nfs-kernel-server tftpd-hpa xorriso pigz pxelinux zfsutils-linux
-    
-    
+    echo "Installazione dei requisiti di sistema"
+    #TODO check if debian, centos, etc
+	apt install -y  bash debootstrap schroot syslinux gdisk git wget curl nfs-kernel-server tftpd-hpa xorriso pigz pxelinux zfsutils-linux
+	
+    echo "ottenere i sorgenti e selezionare il branch"
     git clone https://github.com/scipioni/livenet-server.git
     git checkout bionic
     
     
     path="$(pwd)"
     echo ${path}
-    
     cd ${path}/livenet-server
     rsync -avb etc/ /etc/
     rsync -avb usr/ /usr/
-    
-    
+
+	echo "salvare il path di installazione"
+	cat >> /etc/default/livenet <<QQSCHROOT
+INSTALLPATH=${path}/livenet-server
+
+QQSCHROOT
 }
 
-install
+upgrade(){
+	. ./etc/default/livenet
+	cd ${INSTALLPATH}/
+	git pull --rebase --stat origin bionic
+    rsync -avb etc/ /etc/
+    rsync -avb usr/ /usr/
+	
+	echo "salvare il path di installazione"
+	cat >> /etc/default/livenet <<QQSCHROOT
+INSTALLPATH="$(pwd)/livenet-server"
+
+QQSCHROOT
+}
+
 #Inizializza da dispositivo vergine
 #
 initblk()
@@ -123,6 +135,7 @@ usage()
 
         Options:
         --h: show this messages
+		--install
         --show: show curret livenet configuration
         --initblk: initialize device block for livenet storage
         --version,-v
@@ -136,8 +149,16 @@ while true; do
             usage
             exit 0
         ;;
+		-i|--install)
+			install
+			exit 0
+		;;
+		-u|--upgrade)
+			upgrade
+			exit 0
+		;;
         -v|--version)
-            apt-cache show livenet-server | sed -n 's/^Version:.\([0-9\.]\+\)-.*/\1/p'
+            #apt-cache show livenet-server | sed -n 's/^Version:.\([0-9\.]\+\)-.*/\1/p'
             exit 0
         ;;
         --initblk)
@@ -148,6 +169,7 @@ while true; do
             #show current configuration livenet
             #path of storage
             #network configuration
+			cat /etc/default/livenet
             exit 0
         ;;
         *)
