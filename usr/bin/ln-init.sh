@@ -31,6 +31,7 @@ install(){
     
     echo "ottenere i sorgenti e selezionare il branch"
     git clone https://github.com/scipioni/livenet-server.git
+	cd ./livenet-server
     git checkout bionic
     
     
