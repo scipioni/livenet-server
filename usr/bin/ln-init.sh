@@ -66,11 +66,14 @@ QQSCHROOT
 dhcpinstall(){
    . /etc/default/livenet
 
-	apt install -y isc-dhcp-server 
+	apt install -y isc-dhcp-server  
 	echo "configura l'interfaccia su cui si espone il dchp"
 	read -p "Indica l'interfaccia da usare per il server DHCP: " NIC
 	sed -i '/INTERFACESv4/c\INTERFACESv4="${NIC}"' /etc/default/isc-dhcp-server
-	cp -r ${INSTALLPATH}/usr/share/doc/livenet-server/examples/dhcpd.conf /etc/dhcp/dhcpd.conf	
+	cp -r ${INSTALLPATH}/usr/share/doc/livenet-server/examples/dhcpd.conf /etc/dhcp/dhcpd.conf
+	read -p "Premi un tasto per configurare dhcpd.conf"
+	cp /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.back
+	nano /etc/dhcp/dhcpd.conf
 }
 #Inizializza da dispositivo vergine
 #
@@ -157,6 +160,7 @@ usage()
         Options:
         --h: show this messages
 		--install: install livenet package
+		--installdchp: install and configure dhcp server
 		--upgrade: upgrade livenet package
         --show: show curret livenet configuration
         --initblk: initialize device block for livenet storage
@@ -175,6 +179,10 @@ while true; do
             install
             exit 0
         ;;
+		--installdhcp)
+			dhcpinstall
+			exit 0
+		;;
         -u|--upgrade)
             upgrade
             exit 0
