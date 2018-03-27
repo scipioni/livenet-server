@@ -11,7 +11,7 @@
 
 #echo "Check livenet parameteres in /etc/defaul/livenet"
 
-#vi /etc/default/livenet (    
+#vi /etc/default/livenet (
 
 printf '%s\n' '    __  _                           _   '
 printf '%s\n' '  / / (_)__   __ ___  _ __    ___ | |_ '
@@ -19,16 +19,16 @@ printf '%s\n' ' / /  | |\ \ / // _ \| `_ \  / _ \| __|'
 printf '%s\n' '/ /___| | \ V /|  __/| | | ||  __/| |_ '
 printf '%s\n' '\____/|_|  \_/  \___||_| |_| \___| \__|'
 printf '%s\n' ''
-                                       
+
 echo "Utilità di installazione del sistema"
-  
-                                        
+
+
 
 install(){
     echo "Installazione dei requisiti di sistema"
     #TODO check if debian, centos, etc
-	apt install -y  bash debootstrap schroot syslinux gdisk git wget curl nfs-kernel-server tftpd-hpa xorriso pigz pxelinux zfsutils-linux
-	
+    apt install -y  bash debootstrap schroot syslinux gdisk git wget curl nfs-kernel-server tftpd-hpa xorriso pigz pxelinux zfsutils-linux
+    
     echo "ottenere i sorgenti e selezionare il branch"
     git clone https://github.com/scipioni/livenet-server.git
     git checkout bionic
@@ -39,8 +39,8 @@ install(){
     cd ${path}/livenet-server
     rsync -avb etc/ /etc/
     rsync -avb usr/ /usr/
-
-	echo "salvare il path di installazione"
+    
+    echo "salvare il path di installazione"
 	cat >> /etc/default/livenet <<QQSCHROOT
 INSTALLPATH=${path}/livenet-server
 
@@ -48,19 +48,24 @@ QQSCHROOT
 }
 
 upgrade(){
-	. ./etc/default/livenet
-	cd ${INSTALLPATH}/
-	git pull --rebase --stat origin bionic
+    . ./etc/default/livenet
+    cd ${INSTALLPATH}/
+    git pull --rebase --stat origin bionic
     rsync -avb etc/ /etc/
     rsync -avb usr/ /usr/
-	
-	echo "salvare il path di installazione"
+    
+    echo "salvare il path di installazione"
 	cat >> /etc/default/livenet <<QQSCHROOT
 INSTALLPATH="$(pwd)/livenet-server"
 
 QQSCHROOT
 }
 
+dhcpinstall(){
+	apt install -y isc-dhcp-server 
+	echo "configura l'interfaccia su cui si espone il dchp"
+	
+}
 #Inizializza da dispositivo vergine
 #
 initblk()
@@ -99,8 +104,8 @@ initblk()
             zfs create ${LNPZFS}/${LNVZFS}/boot
             
             #installo i file per il boot di livenet via pxe
-			echo "Costruisco l'immagine di avvio di sistema via pxe"
-
+            echo "Costruisco l'immagine di avvio di sistema via pxe"
+            
             mkdir ${BOOT}/pxelinux.cfg
             cp -a /usr/lib/syslinux/* /livenet/boot
             cp /usr/lib/PXELINUX/pxelinux.0 ${BOOT}
@@ -108,7 +113,7 @@ initblk()
             
             #creo file default
             echo "Configurazione di TFTP"
-			cp ${path}/livenet-server/usr/share/doc/livenet-server/examples ${BOOT}/pxelinux.cfg/default
+            cp ${path}/livenet-server/usr/share/doc/livenet-server/examples ${BOOT}/pxelinux.cfg/default
             
 			cat > /etc/default/tftp-hpa <<QWK
 TFTP_USERNAME="tftp"
@@ -118,7 +123,17 @@ FTP_OPTIONS="--secure"
 QWK
             
             #configurazione di DHCP
-			
+            
+            
+            read -e -p "Vuoi installare il server DHCP: " -i "N" YN
+            YN=${YN:-N}
+            if [ $YN == "y" ] || [ $YN == "Y" ]; then
+                echo "installa dhcp"
+				dhcpinstall
+            else
+                echo "ok non faccio nulla"
+            fi
+            
         fi
         
     else
@@ -149,14 +164,14 @@ while true; do
             usage
             exit 0
         ;;
-		-i|--install)
-			install
-			exit 0
-		;;
-		-u|--upgrade)
-			upgrade
-			exit 0
-		;;
+        -i|--install)
+            install
+            exit 0
+        ;;
+        -u|--upgrade)
+            upgrade
+            exit 0
+        ;;
         -v|--version)
             #apt-cache show livenet-server | sed -n 's/^Version:.\([0-9\.]\+\)-.*/\1/p'
             exit 0
@@ -169,7 +184,7 @@ while true; do
             #show current configuration livenet
             #path of storage
             #network configuration
-			cat /etc/default/livenet
+            cat /etc/default/livenet
             exit 0
         ;;
         *)
