@@ -13,15 +13,16 @@
 
 #vi /etc/default/livenet (    
 
- printf '%s' "$GREEN"
- printf '%s\n' ')\ )                                )'
- printf '%s\n' '(()/( (    )      (           (   ( /('
- printf '%s\n' '/(_)))\  /((    ))\  (      ))\  )\())'
- printf '%s\n' '(_)) ((_)(_))\  /((_) )\ )  /((_)(_))/'
- printf '%s\n' '| |   (_)_)((_)(_))  _(_/( (_))  | |_ '
- printf '%s\n' '| |__ | |\ V / / -_)|'' \))/ -_) |  _|'
- printf '%s\n' '|____||_| \_/  \___||_||_| \___|  \__|'
- printf '%s\n' '' 
+printf '%s\n' '    __  _                           _   '
+printf '%s\n' '  / / (_)__   __ ___  _ __    ___ | |_ '
+printf '%s\n' ' / /  | |\ \ / // _ \| '_ \  / _ \| __|'
+printf '%s\n' '/ /___| | \ V /|  __/| | | ||  __/| |_ '
+printf '%s\n' '\____/|_|  \_/  \___||_| |_| \___| \__|'
+printf '%s\n' ''
+                                       
+
+  
+                                        
 
 
 
@@ -47,7 +48,7 @@ install(){
     
 }
 
-#install
+install
 #Inizializza da dispositivo vergine
 #
 initblk()
