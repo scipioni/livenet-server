@@ -49,7 +49,7 @@ QQSCHROOT
 }
 
 upgrade(){
-    . ./etc/default/livenet
+    . /etc/default/livenet
     cd ${INSTALLPATH}/
     git pull origin bionic
     rsync -avb etc/ /etc/
