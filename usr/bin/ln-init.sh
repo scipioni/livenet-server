@@ -121,7 +121,7 @@ initblk()
             echo "Configurazione di TFTP"
             cp ${INSTALLPATH}/usr/share/doc/livenet-server/examples/default.cfg ${BOOT}/pxelinux.cfg/default
             
-			cat > /etc/default/tftp-hpa <<QWK
+			cat > /etc/default/tftpd-hpa <<QWK
 TFTP_USERNAME="tftp"
 TFTP_DIRECTORY="${BOOT}"
 TFTP_ADDRESS="0.0.0.0:69"
