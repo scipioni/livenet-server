@@ -51,7 +51,7 @@ QQSCHROOT
 upgrade(){
     . ./etc/default/livenet
     cd ${INSTALLPATH}/
-    git pull --rebase --stat origin bionic
+    git pull origin bionic
     rsync -avb etc/ /etc/
     rsync -avb usr/ /usr/
     
