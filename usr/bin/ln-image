@@ -78,7 +78,7 @@ if [ -f ${IMAGES}/${NAME} ]; then
 fi
 
 echo "Create volume for ZFS "
-zfs create ${LNPZFS}/${LNVZFS}${IMAGES}/${NAME}
+zfs create ${LNPZFS}/${LNVZFS}/images/${NAME}
 mount -o remount,exec,dev ${IMAGES}/${NAME}
 
 # schroot configuration
@@ -89,7 +89,7 @@ cat >> /etc/schroot/schroot.conf <<QQSCHROOT
 type=directory
 profile=livenet
 description=livenet gold
-directory=/livenet/images/${NAME}
+directory=${IMAGES}/${NAME}
 
 QQSCHROOT
 
