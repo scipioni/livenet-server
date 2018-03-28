@@ -214,6 +214,7 @@ useradd -u 999 -g sudo -s /bin/bash --create-home livenet
 #*; *; *; Al0000-2400;users,audio,cdrom,floppy,plugdev,video,fuse,dip,kvm
 
 zfs set sharenfs="rw=@10.1.1.22.0/24" ${LNPZFS}/${LNVZFS}/images/${NAME}
+mount --bind ${IMAGES}/${NAME}/boot ${BOOT}/${NAME}
 }
 
 do_backup() {
@@ -568,6 +569,7 @@ while true; do
             exit 1
         fi
         echo "LASTIMAGE=${NAME}" > ${CACHE}
+        chroot ${IMAGES}/${NAME}
         ;;
       --cache)
         COPY_FROM_CACHE=true
