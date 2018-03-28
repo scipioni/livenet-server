@@ -33,17 +33,20 @@ printf '%s\n' ''
 echo "Utilità di creazione immagini dei client"
 
 
+   
+
+
   cat << EOF
-        Usage: $PROGNAME <options>
-
-        Options:
+    Options:
         --list: list available images
-        --edit <name of image>: chroot into image_name
-        --commit <name of image> : confirm changes
-        --restore <name of image>: restore image
-        --showchange <image_name>: show change between image and edit image 
-        --new <image_name> --distr {bionic} [--arch {i386|amd64}] --create: create image
-
+        [--name {<image_name>|default}]: chroot into image_name_dev
+	[--name {<image_name>|default}] --backup: make a start point for remote installation
+        [--name {<image_name>|default}] --[commit|snap]: commit changes from <image_name-dev>
+        [--name {<image_name>|default}] --rollback: rollback changes
+        [--cache] --new-name <image_name> --distr {trusty|raring} [--arch {i386|amd64}] --create: create image
+        --create-states <size_MB>: create loop filesystem for states
+        --version,-v
+        --iso: make boot cd iso  
 EOF
 }
 
