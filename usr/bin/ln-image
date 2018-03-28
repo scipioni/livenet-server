@@ -271,7 +271,7 @@ do_chroot() {
     
 }
 showchange(){
-    IMAGE=$1
+    IMAGE=$2
     zfs snapshot ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap1
     zfs diff ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap0 ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap1
     zfs destroy ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap1
@@ -493,7 +493,7 @@ while true; do
         exit 0
         ;;
       --showchange)
-        showchange ${NAME}
+        showchange $2
         exit 0
         ;;
       --iso)
