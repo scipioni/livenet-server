@@ -188,22 +188,12 @@ chroot ${R} apt-get -y install linux-generic
 umount ${R}/proc
 #chroot ${R} apt-get -y install livenet-client
 echo "Installing livenet-client"
-apt install -y git wget curl vim nano rsync nfs-common initramfs-tools python-passlib pv screen byobu lsof pigz nfs-common libpam-script xloadimage conntrack zfsutils-linux zfs-initramfs
+chroot ${R} apt install -y git wget curl vim nano rsync nfs-common initramfs-tools python-passlib pv screen byobu lsof pigz nfs-common libpam-script xloadimage conntrack zfsutils-linux zfs-initramfs
 
+chroot ${R} mkdir -p /tmp/livenet-client
+chroot ${R} git clone https://github.com/scipioni/livenet-client.git /tmp/livenet-client
 
-chroot ${R}
-cd /tmp
-git clone https://github.com/scipioni/livenet-client.git
-cd livenet-client
-git checkout bionic
-
-rsync -avb etc/ /etc/
-rsync -avb usr/ /usr/
-rsync -avb debian /
-rsync -avb README.md /
-cd /
-ln-mng --kernel
-exit
+chroot ${R} /bin/bash -c "cd /tmp/livenet-client; git checkout bionic; tmp/livenet-client/usr/bin/ln-client-install"
 
 echo > ${R}/etc/legal
 mount -a
