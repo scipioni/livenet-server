@@ -145,7 +145,7 @@ initblk()
 TFTP_USERNAME="tftp"
 TFTP_DIRECTORY="${BOOT}"
 TFTP_ADDRESS="0.0.0.0:69"
-FTP_OPTIONS="--secure"
+TFTP_OPTIONS="--secure"
 QWK
             
             #configurazione di DHCP

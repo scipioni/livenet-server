@@ -188,11 +188,32 @@ chroot ${R} apt-get -y install linux-generic
 umount ${R}/proc
 #chroot ${R} apt-get -y install livenet-client
 echo "Installing livenet-client"
+apt install -y git wget curl vim nano rsync nfs-common initramfs-tools python-passlib pv screen byobu lsof pigz nfs-common libpam-script xloadimage conntrack zfsutils-linux zfs-initramfs
+
+
+chroot ${R}
+cd /tmp
+git clone https://github.com/scipioni/livenet-client.git
+cd livenet-client
+git checkout bionic
+
+rsync -avb etc/ /etc/
+rsync -avb usr/ /usr/
+rsync -avb debian /
+rsync -avb README.md /
+cd /
+ln-mng --kernel
+exit
 
 echo > ${R}/etc/legal
 mount -a
 #
+useradd -u 999 -g sudo -s /bin/bash --create-home livenet
+#passwd livenet
+#/etc/security/group.conf
+#*; *; *; Al0000-2400;users,audio,cdrom,floppy,plugdev,video,fuse,dip,kvm
 
+zfs set sharenfs="rw=@10.1.1.22.0/24" ${LNPZFS}/${LNVZFS}/images/${NAME}
 }
 
 do_backup() {
