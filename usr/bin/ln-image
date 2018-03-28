@@ -462,7 +462,7 @@ while true; do
         do_commit ${NAME}
         exit $?
         ;;
-      --name|-e)
+      --name|-n)
         shift
         NAME=$1
         if [ ! -d ${IMAGES}/${NAME} ]; then
@@ -470,12 +470,11 @@ while true; do
             exit 1
         fi
         echo "LASTIMAGE=${NAME}" > ${CACHE}
-        do_chroot $1
         ;;
       --cache)
         COPY_FROM_CACHE=true
         ;;
-      --new)
+      --new-name)
         shift
         NAME=$1
         if [ -d ${IMAGES}/${NAME} ]; then
@@ -490,10 +489,6 @@ while true; do
         ;;
       --rollback)
         do_reset ${NAME}
-        exit 0
-        ;;
-      --showchange)
-        showchange $2
         exit 0
         ;;
       --iso)
@@ -522,7 +517,7 @@ while true; do
       --distr)
         shift
         DISTR=$1
-        if [ "${DISTR}" != "bionic" ] && [ "${DISTR}" != "bionic" ]; then
+        if [ "${DISTR}" != "trusty" ] && [ "${DISTR}" != "xenial" ]; then
             usage 
             exit 1
         fi
@@ -531,7 +526,6 @@ while true; do
         shift
         if [ -n "$1" ]; then
             echo "Error: bad argument"
-            usage
             exit 1
         fi
         break
@@ -540,5 +534,4 @@ while true; do
    shift
 done
 
-usage
-do_chroot ${NAME}
+#do_chroot ${NAME}-dev
