@@ -470,7 +470,7 @@ while true; do
             exit 1
         fi
         echo "LASTIMAGE=${NAME}" > ${CACHE}
-        do_chroot
+        do_chroot $1
         ;;
       --cache)
         COPY_FROM_CACHE=true
