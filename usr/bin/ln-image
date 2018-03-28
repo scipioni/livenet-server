@@ -541,4 +541,4 @@ while true; do
 done
 
 usage
-#do_chroot ${NAME}-dev
+do_chroot ${NAME}
