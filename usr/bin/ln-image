@@ -38,14 +38,11 @@ echo "Utilità di creazione immagini dei client"
 
         Options:
         --list: list available images
-        [--name {<image_name>|default}]: chroot into image_name
-	    [--name {<image_name>|default}] --backup: make a start point for remote installation
-        [--name {<image_name>|default}] --[commit|snap]: commit changes from <image_name-dev>
-        [--name {<image_name>|default}] --rollback: rollback changes
-        [--cache] --new-name <image_name> --distr {bionic} [--arch {i386|amd64}] --create: create image
-        --create-states <size_MB>: create loop filesystem for states
-        --version,-v
-        --iso: make boot cd iso
+        --edit <name of image>: chroot into image_name
+        --commit <name of image> : confirm changes
+        --restore <name of image>: restore image
+        --showchange <image_name>: show change between image and edit image 
+        --new <image_name> --distr {bionic} [--arch {i386|amd64}] --create: create image
 
 EOF
 }
@@ -257,13 +254,28 @@ do_backup() {
     du -h ${BACKUP}/${name}
     end_time=$(date +%s)
     echo "Elapsed time: $(( $((end_time - start_time))/60 )) min."
+
+    do_snap ${NAME}
 }
 
 do_chroot() {
+    NAME=$1
     cd /
-    schroot -c $1
-}
+    #schroot -c $1
+    read -p "Stai per entrare in edit mode"
+  
+    chroot ${IMAGES}/${NAME}
 
+
+
+    
+}
+showchange(){
+    IMAGE=$1
+    zfs snapshot ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap1
+    zfs diff ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap0 ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap1
+    zfs destroy ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap1
+}
 #show list of images
 do_list() {
    #find  ${IMAGES}  -maxdepth 1 -name "*-diff" -type d -exec basename \{\} \; | sed 's/-diff//' | sort
@@ -287,133 +299,22 @@ check_overlay_busy () {
 
 do_reset() {
     IMAGE=$1
-    ipath=${IMAGES}/${IMAGE}
-    
-    check_overlay_busy ${ipath}
 
-    [ -d ${NFSIMAGES}/${IMAGE}-test ] && \
-        mount -o remount,del:${IMAGES}/${IMAGE}-diff ${NFSIMAGES}/${IMAGE}-test
+    zfs rollback ${LNPZFS}/${LNVZFS}/images/${IMAGE}@snap0
     
-    #rm -fR ${ipath}-diff/*
-    rm -fR ${ipath}-diff
-    mkdir ${ipath}-diff
-    mount ${ipath}-dev
+}
 
-    [ -d ${NFSIMAGES}/${IMAGE}-test ] && \
-        mount -o remount,append:${IMAGES}/${IMAGE}-diff=rw ${NFSIMAGES}/${IMAGE}-test
+do_snap(){
+    IMAGE=$1
+    zfs snapshot ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap0
 }
 
 
 do_commit() {
     IMAGE=$1
-    SCRIPT=script.sh
-    ipath=${IMAGES}/${IMAGE}
-    tmp=${ipath}-dev/tmp
-
-    mountpoint -q ${ipath}-dev
-    if [ ! $? = 0 ]; then
-        mount ${ipath}-dev 
-        if [ ! $? = 0 ]; then
-            echo "ERROR: ${ipath}-dev is not mounted"
-            exit 1
-        fi
-    fi
-
-    check_overlay_busy ${ipath} --remount
-
-    echo "Checking consistency..."
-    chroot ${ipath}-dev /usr/sbin/ln-mng --clean
-
-    . ${ipath}-dev/etc/livenet/livenet.conf
-
-    UPDATES_ON_DEV=${ipath}-dev/${ALLUPDATES}
-    UPDATES_ON_DIFF=${ipath}-diff/${ALLUPDATES}
-
-    CURRENT=`tail -n1 ${UPDATES_ON_DEV}/list`
-    NEW=`date +"%Y%m%d-%H%M"`
-    NEED_REBOOT=
-
-    echo "Processing modifications newer than ${CURRENT} ..."
-
-    cd ${ipath}-diff
-    
-    # aufs
-    #find . -xdev \
-    #    ! -name '.wh..wh.*' \
-    #    -name '.wh.*' \
-    #    | sed -e 's/.wh.//' \
-    #    | sed -e 's/^\./rm -fR /' >> ${tmp}/${SCRIPT}
-    
-    # overlayfs
-    find -L . -xdev \
-        -type c | sed -e 's/^\./rm -fR /' >> ${tmp}/${SCRIPT}
-
-    [ -s ${tmp}/${SCRIPT} ] && echo " found $(grep '^rm' ${tmp}/${SCRIPT} | wc -l) delete"
-
-    # overlayfs
-    find . -xdev \
-        ! -type d \
-        ! -ilname "(overlay-whiteout)" \
-        ! -name '.*.swp' \
-        ! -name '.wh.*' \
-        ! -wholename './tmp/*' \
-        ! -wholename './var/cache/livenet/tmp*' \
-        ! -wholename './var/log/*' \
-        ! -wholename './var/cache/apt/archives/*' \
-        ! -wholename './etc/alternatives/libGL.so.1' \
-        ! -wholename './etc/alternatives/libglx.so' \
-        ! -wholename './usr/local/src/*' \
-        ! -wholename './etc/livenet/local/livenet.conf' \
-        ! -wholename './etc/alternatives/livenet.conf' \
-        ! -wholename './etc/debian_chroot' \
-        ! -wholename './var/lib/dpkg/lock' \
-        | sed -e 's/^\.\///' > ${tmp}/${NEW}
-    find . -xdev \
-        -type d -empty \
-        | sed -e 's/^\.\///' >> ${tmp}/${NEW}
-
-    if [ ! $(cat ${tmp}/${NEW} ${tmp}/${SCRIPT} | wc -l) -gt 0 ]; then
-        echo "No updates"
-        exit 0
-    fi
-    
-    mv ${tmp}/${NEW} ${UPDATES_ON_DEV}
-    echo " founded $(cat ${UPDATES_ON_DEV}/${NEW} | wc -l) modifications"
-    if [ -n "$(grep initrd.img ${UPDATES_ON_DEV}/${NEW})" ]; then 
-        echo "Detected initrd update, force reboot of clients"
-        chmod +t ${UPDATES_ON_DEV}/${NEW}
-        NEED_REBOOT=yes
-    fi
-
-    cd ${ipath}-dev
-    find ${ALLUPDATES} -name '2???????-????' -type f | sed -e 's/^\.\///' | sort > /${UPDATES_ON_DEV}/list
-    if [ -s ${tmp}/${SCRIPT} ]; then
-        mv ${tmp}/${SCRIPT} ${UPDATES_ON_DEV}/${NEW}.sh
-        touch -r ${UPDATES_ON_DEV}/${NEW}.sh ${UPDATES_ON_DEV}/${NEW}
-    fi
-
-    echo "Merging to ${ipath}"
-    echo " inspect at ${ipath}/${ALLUPDATES}/${NEW}"
-
-    # to permit umount
-    cd ${IMAGES}
-    check_overlay_busy ${ipath}
-
-    cd ${ipath}-diff
-    rsync --archive --quiet --hard-links --inplace --files-from=${UPDATES_ON_DIFF}/${NEW} ${ipath}-diff/ ${ipath}/
-    [ -n "${command}" ] && echo "${command}" > ${ipath}/${ALLUPDATES}/${NEW}.log
-    grep -v '\.git\/' ${UPDATES_ON_DIFF}/${NEW} > ${ipath}/${ALLUPDATES}/${NEW}
-    cp -au ${UPDATES_ON_DIFF}/list  ${ipath}/${ALLUPDATES}
-    if [ -s ${UPDATES_ON_DIFF}/${NEW}.sh ]; then
-        cp -au ${UPDATES_ON_DIFF}/${NEW}.sh  ${ipath}/${ALLUPDATES}
-        grep "^rm " ${UPDATES_ON_DIFF}/${NEW}.sh | chroot ${ipath} >/dev/null 2>&1
-        echo " inspect at ${ipath}/${ALLUPDATES}/${NEW}.sh"
-    fi
-
-    [ -n "${NEED_REBOOT}" ] && touch ${ipath}/${ALLUPDATES}/${NEW}.reboot
-
-    mount ${ipath}-dev
-    do_reset ${IMAGE}
+  #  SCRIPT=script.sh
+    zfs destroy -r ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap0
+    zfs snapshot ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap0
 }
 
 do_create_states() {
@@ -561,7 +462,7 @@ while true; do
         do_commit ${NAME}
         exit $?
         ;;
-      --name|-n)
+      --edit|-e)
         shift
         NAME=$1
         if [ ! -d ${IMAGES}/${NAME} ]; then
@@ -569,12 +470,12 @@ while true; do
             exit 1
         fi
         echo "LASTIMAGE=${NAME}" > ${CACHE}
-        chroot ${IMAGES}/${NAME}
+        do_chroot
         ;;
       --cache)
         COPY_FROM_CACHE=true
         ;;
-      --new-name)
+      --new)
         shift
         NAME=$1
         if [ -d ${IMAGES}/${NAME} ]; then
@@ -589,6 +490,10 @@ while true; do
         ;;
       --rollback)
         do_reset ${NAME}
+        exit 0
+        ;;
+      --showchange)
+        showchange ${NAME}
         exit 0
         ;;
       --iso)
