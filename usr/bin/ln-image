@@ -21,14 +21,20 @@ fi
 
 INTERFACE=${INTERFACE:=ens3}
 
+logo(){
+
+    printf '%s\n' '    __  _                           _   '
+    printf '%s\n' '  / / (_)__   __ ___  _ __    ___ | |_ '
+    printf '%s\n' ' / /  | |\ \ / // _ \| `_ \  / _ \| __|'
+    printf '%s\n' '/ /___| | \ V /|  __/| | | ||  __/| |_ '
+    printf '%s\n' '\____/|_|  \_/  \___||_| |_| \___| \__|'
+    printf '%s\n' ''
+
+}
+
 usage()
 {
-printf '%s\n' '    __  _                           _   '
-printf '%s\n' '  / / (_)__   __ ___  _ __    ___ | |_ '
-printf '%s\n' ' / /  | |\ \ / // _ \| `_ \  / _ \| __|'
-printf '%s\n' '/ /___| | \ V /|  __/| | | ||  __/| |_ '
-printf '%s\n' '\____/|_|  \_/  \___||_| |_| \___| \__|'
-printf '%s\n' ''
+logo
 
 echo "Utilità di creazione immagini dei client"
 
