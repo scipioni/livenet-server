@@ -521,6 +521,7 @@ while true; do
             echo "Error: bad argument"
             exit 1
         fi
+        usage
         break
         ;;
    esac
