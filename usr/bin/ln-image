@@ -208,6 +208,8 @@ useradd -u 999 -g sudo -s /bin/bash --create-home livenet
 
 zfs set sharenfs="rw=@10.1.22.0/24" ${LNPZFS}/${LNVZFS}/images/${NAME}
 mount --bind ${IMAGES}/${NAME}/boot ${BOOT}/${NAME}
+
+do_snap ${NAME}
 }
 
 do_backup() {
@@ -251,7 +253,7 @@ do_backup() {
     end_time=$(date +%s)
     echo "Elapsed time: $(( $((end_time - start_time))/60 )) min."
 
-    do_snap ${NAME}
+    
 }
 
 do_chroot() {
