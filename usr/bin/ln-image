@@ -205,7 +205,7 @@ useradd -u 999 -g sudo -s /bin/bash --create-home livenet
 #/etc/security/group.conf
 #*; *; *; Al0000-2400;users,audio,cdrom,floppy,plugdev,video,fuse,dip,kvm
 
-zfs set sharenfs="rw=@10.1.22.0/24" ${LNPZFS}/${LNVZFS}/images/${NAME}
+zfs set sharenfs="ro=@10.1.22.0/24" ${LNPZFS}/${LNVZFS}/images/${NAME}
 mount --bind ${IMAGES}/${NAME}/boot ${BOOT}/${NAME}
 
 do_snap ${NAME}
