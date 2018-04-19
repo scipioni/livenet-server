@@ -44,20 +44,17 @@ echo "Utilità di creazione immagini dei client"
 
   cat << EOF
     Options:
-        --list: list available images
-        [--name {<image_name>|default}]: chroot into image_name_dev
-	[--name {<image_name>|default}] --backup: make a start point for remote installation
-        [--name {<image_name>|default}] --[commit|snap]: commit changes from <image_name-dev>
-        [--name {<image_name>|default}] --rollback: rollback changes
-        [--cache] --new-name <image_name> --distr {trusty|raring} [--arch {i386|amd64}] --create: create image
-        --create-states <size_MB>: create loop filesystem for states
-        --version,-v
-        --iso: make boot cd iso  
+        --list|-l: list available images
+        --name|-n [<image_name>]               edit systems image
+        --name|-n [<image_name>] --commit      commit changes from edited image
+        --name|-n [<image_name>] --rollback    rollback changes from edited image
+        [--cache] --new-image <image_name> --distr {bionic|xenial} [--arch {i386|amd64}] --create: create image
+        --help : show this messge  
 EOF
 }
 
 SHORTOPTS="hvn:"
-LONGOPTS="help,version,backup,commit,snap,name:,list,iso,rollback,create,arch:,distr:,new-name:,create-states:,cache"
+LONGOPTS="help,version,backup,commit,snap,name:,list,iso,rollback,create,arch:,distr:,new-image:,create-states:,cache"
 
 ARGS=$(getopt -s bash --options $SHORTOPTS --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
 eval set -- "$ARGS"
@@ -259,22 +256,21 @@ do_backup() {
 
 do_chroot() {
     NAME=$1
+    logo
     cd ~
-    read -p "Stai per entrare in modalità modifica immagine. 
-Puoi testare l’ambiente con ln-image -n <name> -t
-Se non ti piace scarta le modifiche con ln-image --rollback e ricomincia. 
-Una volta terminato, manda in produzione l’immagine con ln-image --commit. 
-Esci dalla modalità editor con <exit>
+    read -p "
+    Stai per entrare in modalità modifica immagine. 
+    Puoi testare l’ambiente con ln-image -n <name> -t
+    Se non ti piace scarta le modifiche con ln-image --rollback e ricomincia. 
+    Una volta terminato, manda in produzione l’immagine con ln-image --commit. 
+    Esci dalla modalità editor con <exit>
 
 Buon lavoro ... "
   
     schroot -c $1
   
  #   chroot ${IMAGES}/${NAME}
-
-
-
-    
+ 
 }
 showchange(){
     IMAGE=$2
@@ -481,7 +477,7 @@ while true; do
       --cache)
         COPY_FROM_CACHE=true
         ;;
-      --new-name)
+      --new-image)
         shift
         NAME=$1
         if [ -d ${IMAGES}/${NAME} ]; then
@@ -498,20 +494,9 @@ while true; do
         do_reset ${NAME}
         exit 0
         ;;
-      --iso)
-        do_iso
-        exit 0
-        ;;
-      --create)
+      --create|-c)
         do_create ${NAME}
         exit 0
-        ;;
-      --create-states)
-        shift
-        SIZE=$1
-        echo "Creating states with size=${SIZE}" 
-        do_create_states ${SIZE}
-        exit $?
         ;;
       --arch)
         shift
@@ -524,7 +509,7 @@ while true; do
       --distr)
         shift
         DISTR=$1
-        if [ "${DISTR}" != "trusty" ] && [ "${DISTR}" != "xenial" ]; then
+        if [ "${DISTR}" != "bionic" ] && [ "${DISTR}" != "xenial" ]; then
             usage 
             exit 1
         fi
@@ -542,4 +527,4 @@ while true; do
    shift
 done
 
-#do_chroot ${NAME}-dev
+
