@@ -44,11 +44,11 @@ echo "Utilità di creazione immagini dei client"
 
   cat << EOF
     Options:
-        --list|-l: list available images
-        --name|-n [<image_name>]               edit systems image
-        --name|-n [<image_name>] --commit      commit changes from edited image
-        --name|-n [<image_name>] --rollback    rollback changes from edited image
-        [--cache] --new-image <image_name> --distr {bionic|xenial} [--arch {i386|amd64}] --create: create image
+        --list: list available images
+        --name <image_name>               edit systems image
+        --name <image_name> --commit      commit changes from edited image
+        --name <image_name> --rollback    rollback changes from edited image
+        [--cache] --new-image <image_name> [--distr {bionic|xenial} [--arch {i386|amd64}] --create: create image
         --help : show this messge  
 EOF
 }
@@ -448,23 +448,19 @@ EOF
 
 while true; do
    case $1 in
-      -h|--help)
+      --help)
          usage
          exit 0
          ;;
-      -v|--version)
+      --version)
         apt-cache show livenet-server | sed -n 's/^Version:.\([0-9\.]\+\)-.*/\1/p'
         exit 0
          ;;
-      --backup)
-        do_backup ${NAME}
-        exit $?
-        ;;
-      --commit|--snap)
+      --commit)
         do_commit ${NAME}
         exit $?
         ;;
-      --name|-n)
+      --name)
         shift
         NAME=$1
         if [ ! -d ${IMAGES}/${NAME} ]; then
@@ -486,7 +482,7 @@ while true; do
         fi
         echo "LASTIMAGE=${NAME}" > ${CACHE}
         ;;
-      --list|-l)
+      --list)
         do_list
         exit 0
         ;;
@@ -494,7 +490,7 @@ while true; do
         do_reset ${NAME}
         exit 0
         ;;
-      --create|-c)
+      --create)
         do_create ${NAME}
         exit 0
         ;;
