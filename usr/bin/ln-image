@@ -463,6 +463,7 @@ while true; do
             exit 1
         fi
         echo "LASTIMAGE=${NAME}" > ${CACHE}
+        do_chroot $NAME
         ;;
       --cache)
         COPY_FROM_CACHE=true
@@ -476,7 +477,7 @@ while true; do
         fi
         echo "LASTIMAGE=${NAME}" > ${CACHE}
         ;;
-      --list)
+      --list|-l)
         do_list
         exit 0
         ;;
