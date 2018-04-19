@@ -308,15 +308,15 @@ do_reset() {
 
 do_snap(){
     IMAGE=$1
-    zfs snapshot ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap0
+    zfs snapshot ${LNPZFS}/${LNVZFS}/images/${IMAGE}@snap0
 }
 
 
 do_commit() {
     IMAGE=$1
   #  SCRIPT=script.sh
-    zfs destroy -r ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap0
-    zfs snapshot ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap0
+    zfs destroy -r ${LNPZFS}/${LNVZFS}/images/${IMAGE}@snap0
+    zfs snapshot ${LNPZFS}/${LNVZFS}/images/${IMAGE}@snap0
 }
 
 do_create_states() {
