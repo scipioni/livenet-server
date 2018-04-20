@@ -5,6 +5,7 @@ PROGNAME=${0##*/}
 #set -x
 
 . /etc/default/livenet
+
 [ -f /etc/default/livenet.override ] && . /etc/default/livenet.override
 #[ -z "${NFSIMAGES}" ] && NFSIMAGES=/images
 
@@ -92,6 +93,7 @@ fi
 
 echo "Create volume for ZFS "
 zfs create ${LNPZFS}/${LNVZFS}/images/${NAME}
+
 mount -o remount,exec,dev ${IMAGES}/${NAME}
 
 # schroot configuration
