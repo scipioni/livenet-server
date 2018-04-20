@@ -18,6 +18,11 @@ IMAGES=${BASE}/images
 BACKUP=${IMAGES}/backup
 BOOT=${BASE}/boot
 
+#SOME PARAMETERS DEFAULT 
+
+DEFAULTPASSWD=univr
+
+
 #OLD config
 
 #NFSIMAGES=/images

@@ -187,8 +187,10 @@ echo "Updating packages ..."
 chroot ${R} apt-get -q update >/dev/null
 export DEBIAN_FRONTEND=noninteractive
 mount -t proc none ${R}/proc
+
 chroot ${R} apt-get -y install linux-generic
 umount ${R}/proc
+
 #chroot ${R} apt-get -y install livenet-client
 echo "Installing livenet-client"
 chroot ${R} apt install -y git wget curl vim nano rsync nfs-common initramfs-tools python-passlib pv screen byobu lsof pigz nfs-common libpam-script xloadimage conntrack zfsutils-linux zfs-initramfs
@@ -200,15 +202,20 @@ chroot ${R} /bin/bash -c "cd /tmp/livenet-client; git checkout bionic; /tmp/live
 echo > ${R}/etc/legal
 mount -a
 #
-useradd -u 999 -g sudo -s /bin/bash --create-home livenet
-#passwd livenet
-#/etc/security/group.conf
+chroot ${R} /bin/bash -c "useradd -u 999 -g sudo -s /bin/bash --create-home livenet"
+chroot ${R} /bin/bash -c "passwd -d livenet"
+chroot ${R} /bin/bash -c "usermod -p $(openssl passwd -1 "$DEFAULTPASSWD") livenet"
+
+cat > ${R}/etc/security/group.conf <<QWE
 #*; *; *; Al0000-2400;users,audio,cdrom,floppy,plugdev,video,fuse,dip,kvm
+QWE
 
 zfs set sharenfs="ro=@10.1.22.0/24" ${LNPZFS}/${LNVZFS}/images/${NAME}
 mount --bind ${IMAGES}/${NAME}/boot ${BOOT}/${NAME}
+#TODO ADD mount in bind to /etc/fstab
 
 do_snap ${NAME}
+
 }
 
 do_backup() {
