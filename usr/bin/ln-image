@@ -206,7 +206,7 @@ mount -a
 #
 chroot ${R} /bin/bash -c "useradd -u 999 -g sudo -s /bin/bash --create-home livenet"
 chroot ${R} /bin/bash -c "passwd -d livenet"
-chroot ${R} /bin/bash -c "usermod -p $(openssl passwd -1 "$DEFAULTPASSWD") livenet"
+chroot ${R} /bin/bash -c "usermod -p $(openssl passwd -1 "univr") livenet"
 
 cat > ${R}/etc/security/group.conf <<QWE
 #*; *; *; Al0000-2400;users,audio,cdrom,floppy,plugdev,video,fuse,dip,kvm
