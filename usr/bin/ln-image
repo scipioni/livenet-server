@@ -207,6 +207,7 @@ mount -a
 chroot ${R} /bin/bash -c "useradd -u 999 -g sudo -s /bin/bash --create-home livenet"
 chroot ${R} /bin/bash -c "passwd -d livenet"
 chroot ${R} /bin/bash -c "usermod -p $(openssl passwd -1 "univr") livenet"
+chroot ${R} /bin/bash -c "apt install openssh-server parted bcache-tools gdisk"
 
 cat > ${R}/etc/security/group.conf <<QWE
 #*; *; *; Al0000-2400;users,audio,cdrom,floppy,plugdev,video,fuse,dip,kvm
