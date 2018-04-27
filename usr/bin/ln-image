@@ -280,7 +280,7 @@ do_chroot() {
 
     zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}@now
     WTF=$?
-    if [$WTF -eq 1]; then
+    if [ $WTF -eq 1 ]; then
         echo "Hai delle vecchie modifiche non salvate"
     fi
     logo
@@ -294,7 +294,7 @@ do_chroot() {
 
 Buon lavoro ... "
   
-    schroot -c $1
+    schroot -c $NAME
   
  #   chroot ${IMAGES}/${NAME}
  
