@@ -55,12 +55,6 @@ upgrade(){
     rsync -avb etc/ /etc/
     rsync -avb usr/ /usr/
     
-    echo "salvare il path di installazione"
-	
-	cat >> /etc/default/livenet <<QQSCHROOT
-INSTALLPATH="$(pwd)"
-
-QQSCHROOT
 }
 
 dhcpinstall(){
