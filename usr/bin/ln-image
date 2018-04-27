@@ -343,7 +343,8 @@ do_snap(){
 do_commit() {
     IMAGE=$1
   #  SCRIPT=script.sh
-    do_snap
+    timestamp=$(date +%Y-%m-%d_%H-%M-%S)
+    zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
     zfs destroy  ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@now
 }
 
