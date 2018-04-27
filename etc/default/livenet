@@ -28,3 +28,7 @@ DEFAULTPASSWD=univr
 #NFSIMAGES=/images
 #STATES=${BASE}/states.img
 #STATES_MOUNT=${BASE}/states
+
+
+
+HOSTIP=10.1.22.3

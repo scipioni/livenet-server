@@ -92,7 +92,8 @@ if [ -f ${IMAGES}/${NAME} ]; then
 fi
 
 echo "Create volume for ZFS "
-zfs create ${LNPZFS}/${LNVZFS}/images/${NAME}
+zfs create ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
+zfs allow lnsrvsend send ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
 
 mount -o remount,exec,dev ${IMAGES}/${NAME}
 
@@ -121,8 +122,8 @@ fi
 
 # hosts
 cat > ${R}/etc/hosts <<QWK
-127.0.0.1   localhost livenet-host
-
+127.0.0.1   localhost livenet-client
+${HOSTIP} livenet-host
 ::1     localhost ip6-localhost ip6-loopback
 ff02::1     ip6-allnodes
 ff02::2     ip6-allrouters
@@ -151,7 +152,7 @@ QWE
 echo 'rootfs / rootfs rw 0 0' > ${R}/etc/mtab
 
 # hostname is checked to check chroot environment (see /usr/sbin/policy-rc.d) 
-echo livenet-host > ${R}/etc/hostname
+echo livenet-client > ${R}/etc/hostname
 
 # debian_chroot to have nicer prompt
 chroot ${R} lsb_release -c | awk '{print $2}' > ${R}/etc/debian_chroot
@@ -208,9 +209,16 @@ chroot ${R} /bin/bash -c "useradd -u 999 -g sudo -s /bin/bash --create-home live
 chroot ${R} /bin/bash -c "passwd -d livenet"
 chroot ${R} /bin/bash -c "usermod -p $(openssl passwd -1 "univr") livenet"
 chroot ${R} /bin/bash -c "apt install openssh-server parted bcache-tools gdisk"
+chroot ${R} /bin/bash -c "mkdir /root/.ssh"
+chroot ${R} /bin/bash -c "ssh-keygen -f /root/.ssh/id_rsa -t rsa -N ''"
 
 cat > ${R}/etc/security/group.conf <<QWE
 #*; *; *; Al0000-2400;users,audio,cdrom,floppy,plugdev,video,fuse,dip,kvm
+QWE
+
+cat > ${R}/root/.ssh/config <<QWE
+Host *
+StrictHostKeyChecking no
 QWE
 
 zfs set sharenfs="ro=@10.1.22.0/24" ${LNPZFS}/${LNVZFS}/images/${NAME}
@@ -267,6 +275,14 @@ do_backup() {
 
 do_chroot() {
     NAME=$1
+
+    . /etc/default/livenet
+
+    zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}@now
+    WTF=$?
+    if [$WTF -eq 1]; then
+        echo "Hai delle vecchie modifiche non salvate"
+    fi
     logo
     cd ~
     read -p "
@@ -313,21 +329,22 @@ check_overlay_busy () {
 do_reset() {
     IMAGE=$1
 
-    zfs rollback ${LNPZFS}/${LNVZFS}/images/${IMAGE}@snap0
+    zfs rollback ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@now
     
 }
 
 do_snap(){
     IMAGE=$1
-    zfs snapshot ${LNPZFS}/${LNVZFS}/images/${IMAGE}@snap0
+    timestamp=$(date +%Y-%m-%d_%H-%M-%S)
+    zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
 }
 
 
 do_commit() {
     IMAGE=$1
   #  SCRIPT=script.sh
-    zfs destroy -r ${LNPZFS}/${LNVZFS}/images/${IMAGE}@snap0
-    zfs snapshot ${LNPZFS}/${LNVZFS}/images/${IMAGE}@snap0
+    do_snap
+    zfs destroy  ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@now
 }
 
 do_create_states() {
@@ -467,6 +484,10 @@ while true; do
         apt-cache show livenet-server | sed -n 's/^Version:.\([0-9\.]\+\)-.*/\1/p'
         exit 0
          ;;
+      --backup)
+        do_backup ${NAME}
+        exit $?
+        ;;
       --commit)
         do_commit ${NAME}
         exit $?
@@ -535,3 +556,4 @@ while true; do
 done
 
 
+do_chroot ${NAME}

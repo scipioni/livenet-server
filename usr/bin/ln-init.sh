@@ -129,6 +129,18 @@ initblk()
             echo zfs create ${LNPZFS}/${LNVZFS}/boot
             zfs create ${LNPZFS}/${LNVZFS}/boot
             
+            #creo un utente per inviare i volumi
+            useradd -s /bin/bash --create-home lnsrvsend
+            chroot ${R} /bin/bash -c "passwd -d lnsrvsend"
+            chroot ${R} /bin/bash -c "usermod -p $(openssl passwd -1 "lnsrv") lnsrvsend"
+
+
+            cat > ${R}/root/.ssh/config <<QWE
+            Host *
+            StrictHostKeyChecking no
+            QWE
+
+
             #installo i file per il boot di livenet via pxe
             echo "Costruisco l'immagine di avvio di sistema via pxe a 64 bit"
             
@@ -142,6 +154,7 @@ initblk()
             cp ${INSTALLPATH}/usr/share/doc/livenet-server/examples/default.cfg ${BOOT}/pxelinux.cfg/default
             
 			cat > /etc/default/tftpd-hpa <<QWK
+
 TFTP_USERNAME="tftp"
 TFTP_DIRECTORY="${BOOT}"
 TFTP_ADDRESS="0.0.0.0:69"
