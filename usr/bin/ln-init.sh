@@ -135,12 +135,6 @@ initblk()
             chroot ${R} /bin/bash -c "usermod -p $(openssl passwd -1 "lnsrv") lnsrvsend"
 
 
-            cat > ${R}/root/.ssh/config <<QWE
-            Host *
-            StrictHostKeyChecking no
-            QWE
-
-
             #installo i file per il boot di livenet via pxe
             echo "Costruisco l'immagine di avvio di sistema via pxe a 64 bit"
             
