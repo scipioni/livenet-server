@@ -328,8 +328,9 @@ check_overlay_busy () {
 
 do_reset() {
     IMAGE=$1
-
-    zfs rollback ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@now
+    #get the latest snapshot
+    LAST_SNAP=$(zfs list -t snapshot -o name -s creation -r ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE} | tail -1)
+    zfs rollback ${LAST_SNAP}
     
 }
 
@@ -345,7 +346,6 @@ do_commit() {
   #  SCRIPT=script.sh
     timestamp=$(date +%Y-%m-%d_%H-%M-%S)
     zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
-    zfs destroy  ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@now
 }
 
 do_create_states() {
