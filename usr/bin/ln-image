@@ -390,7 +390,7 @@ do_commit() {
     LAST2=$(zfs list -t snapshot -o name | grep ${IMAGE}@ | tail -2 | head -1)
     LAST=$(zfs list -t snapshot -o name | grep ${IMAGE}@ | tail -1)
     SNAP=$(zfs list -t snapshot -o name | grep ${IMAGE}@ |tail -1 | awk -F"@" '{print $2}')
-    zfs send -i $LAST2 $LAST1 | gzip >> ${INCREASES}/${IMAGE}/${SNAP}.snapshot.gz
+    zfs send -i $LAST2 $LAST | gzip >> ${INCREASES}/${IMAGE}/${SNAP}.snapshot.gz
 
 }
 
