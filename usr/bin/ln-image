@@ -230,6 +230,8 @@ end_time=$(date +%s)
 echo "Elapsed time: $(( $((end_time - start_time))/60 )) min."
 echo $end_time "End ${NAME} building" >> ${BASE}/livenet.log
 
+echo FROM=${NAME} > /root/FROM
+
 }
 
 do_backup() {
