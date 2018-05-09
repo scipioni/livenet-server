@@ -301,6 +301,20 @@ do_backup() {
     
 }
 
+do_nothing() {
+    logo
+
+    cd ~
+    read -p "
+    Stai per entrare in modalità modifica immagine. 
+    Puoi testare l’ambiente con ln-image -n <name> -t
+    Se non ti piace scarta le modifiche con ln-image --rollback e ricomincia. 
+    Una volta terminato, manda in produzione l’immagine con ln-image --commit. 
+    Esci dalla modalità editor con <exit>
+
+Buon lavoro ... "
+  
+}
 do_chroot() {
     NAME=$1
 
@@ -312,17 +326,7 @@ do_chroot() {
     if [ $WTF -eq 1 ]; then
         echo "Hai delle vecchie modifiche non salvate"
     fi
-    logo
-    cd ~
-    read -p "
-    Stai per entrare in modalità modifica immagine. 
-    Puoi testare l’ambiente con ln-image -n <name> -t
-    Se non ti piace scarta le modifiche con ln-image --rollback e ricomincia. 
-    Una volta terminato, manda in produzione l’immagine con ln-image --commit. 
-    Esci dalla modalità editor con <exit>
-
-Buon lavoro ... "
-  
+    
     schroot -c $NAME
   
  #   chroot ${IMAGES}/${NAME}
