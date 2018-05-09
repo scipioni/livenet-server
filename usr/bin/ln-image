@@ -241,32 +241,57 @@ do_backup() {
 
     . ${IMAGES}/${IMAGE}/etc/livenet/livenet.conf
 
-    cd ${IMAGES}/${IMAGE}
-    rm -fR tmp/*
+    #cd ${IMAGES}/${IMAGE}
+    #rm -fR tmp/*
+    
+    LAST=$(zfs list -t snapshot -o name | grep ${IMAGE} | tail -1)
 
-    version=0
-    [ -f ${ALLUPDATES}/list ] && version=`basename $( tail -n1 ${ALLUPDATES}/list )`
-    name=${IMAGE}_${version}.tar.gz
+    mkdir -p ${BACKUP}/${IMAGE}
 
-    mkdir -p ${BACKUP}
-    if [ -f ${BACKUP}/${name} ]; then
-        echo "${BACKUP}/${name} exists, exit"
-        exit 0
+    if [ -f ${BACKUP}/${IMAGE}/${IMAGE}.0.gz ]; then
+        echo "old ${BACKUP}/${IMAGE}/${IMAGE}.0.gz, delete old backup"
+        rm ${BACKUP}/${IMAGE}/${IMAGE}.0.gz
+        
     fi
 
-    echo -n "Backing up $name ..."
-    trap "rm -f ${BACKUP}/tmp-image; exit 1" SIGINT
-    nice tar cpP --numeric-owner --one-file-system --use-compress-program=pigz \
-        --exclude=./var/cache/apt/archives/* \
-        --exclude=./var/cache/livenet/tmp* \
-        --exclude=./usr/local/src/* \
-        --exclude=./root/.netrc* \
-        --exclude=./livenet/.git* \
-        --exclude=./tmp/* \
-        --exclude=./root/.bash_history \
-        . 2>/dev/null > ${BACKUP}/tmp-image
-    mv ${BACKUP}/tmp-image ${BACKUP}/${name}
-    du -h ${BACKUP}/${name}
+    echo "Build gold image from snapshot... "
+    
+    zfs send ${LAST} | gzip > ${BACKUP}/${IMAGE}/${IMAGE}.0.gz
+    
+    echo "Delete old snapshot"
+
+    if [ -d ${INCREASES}/${IMAGE} ]; then
+        echo "old ${BACKUP}/${IMAGE}/${IMAGE}.0.gz, delete old backup"
+        ls ${INCREASES}/${IMAGE}/*
+        
+    fi
+    
+   # version=0
+    #[ -f ${ALLUPDATES}/list ] && version=`basename $( tail -n1 ${ALLUPDATES}/list )`
+   # name=${IMAGE}_${version}.tar.gz
+
+    #mkdir -p ${BACKUP}
+    #if [ -f ${BACKUP}/${name} ]; then
+    #    echo "${BACKUP}/${name} exists, exit"
+    #    exit 0
+    #fi
+
+    #echo -n "Backing up $name ..."
+    #trap "rm -f ${BACKUP}/tmp-image; exit 1" SIGINT
+    #nice tar cpP --numeric-owner --one-file-system --use-compress-program=pigz \
+    #    --exclude=./var/cache/apt/archives/* \
+    #    --exclude=./var/cache/livenet/tmp* \
+    #    --exclude=./usr/local/src/* \
+    #    --exclude=./root/.netrc* \
+    #    --exclude=./livenet/.git* \
+    #    --exclude=./tmp/* \
+    #    --exclude=./root/.bash_history \
+    #    . 2>/dev/null > ${BACKUP}/tmp-image
+    #mv ${BACKUP}/tmp-image ${BACKUP}/${name}
+    #du -h ${BACKUP}/${name}
+    
+    
+    
     end_time=$(date +%s)
     echo "Elapsed time: $(( $((end_time - start_time))/60 )) min."
 
@@ -277,8 +302,9 @@ do_chroot() {
     NAME=$1
 
     . /etc/default/livenet
+    timestamp=$(date +%Y-%m-%d_%H-%M-%S)
 
-    zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}@now
+    zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}@${timestamp}
     WTF=$?
     if [ $WTF -eq 1 ]; then
         echo "Hai delle vecchie modifiche non salvate"
@@ -311,6 +337,11 @@ do_list() {
    ls ${IMAGES} | sort
 }
 
+do_go_gold(){
+    zfs rollback -r ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@now
+}
+
+
 check_overlay_busy () {
     ipath=$1
     REMOUNT=$2
@@ -331,7 +362,7 @@ do_reset() {
     #get the latest snapshot
     LAST_SNAP=$(zfs list -t snapshot -o name -s creation -r ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE} | tail -1)
     zfs rollback ${LAST_SNAP}
-    
+
 }
 
 do_snap(){
@@ -521,6 +552,10 @@ while true; do
         ;;
       --rollback)
         do_reset ${NAME}
+        exit 0
+        ;;
+      --returngold)
+        do_go_gold ${NAME}
         exit 0
         ;;
       --create)
