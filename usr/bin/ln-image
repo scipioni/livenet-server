@@ -266,7 +266,7 @@ do_backup() {
 
     if [ -d ${INCREASES}/${IMAGE} ]; then
         echo "old ${BACKUP}/${IMAGE}/${IMAGE}.0.gz, delete old backup"
-        ls ${INCREASES}/${IMAGE}/*
+        rm ${INCREASES}/${IMAGE}/*
         
     fi
     
