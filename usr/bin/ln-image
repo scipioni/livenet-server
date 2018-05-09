@@ -318,9 +318,9 @@ Buon lavoro ... "
 }
 do_chroot() {
     NAME=$1
-
+    cd ~
     . /etc/default/livenet
-   
+    
     schroot -c $NAME
   
  #   chroot ${IMAGES}/${NAME}
@@ -379,7 +379,7 @@ do_commit() {
     mkdir -p ${INCREASES}/${IMAGE}
 
     zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
-    COUNTSNAP=zfs list -t snapshot | grep bionic | wc -l
+    COUNTSNAP=$(zfs list -t snapshot | grep bionic | wc -l)
     MIN=2
     if [ $MIN -gt $COUNTSNAP ]
     then
