@@ -233,8 +233,9 @@ echo $end_time "End ${NAME} building" >> ${BASE}/livenet.log
 }
 
 do_backup() {
+    set -x
     IMAGE=$1
-
+ 
     start_time=$(date +%s)
 
     if [ ! -d ${IMAGES}/${IMAGE} ]; then
@@ -242,8 +243,8 @@ do_backup() {
         exit 1
     fi
 
-    . ${IMAGES}/${IMAGE}/etc/livenet/livenet.conf
-
+    #. ${IMAGES}/${IMAGE}/etc/livenet/livenet.conf
+    . /etc/default/livenet
     #cd ${IMAGES}/${IMAGE}
     #rm -fR tmp/*
     
@@ -259,7 +260,7 @@ do_backup() {
 
     echo "Build gold image from snapshot... "
     
-    zfs send ${LAST} | gzip > ${BACKUP}/${IMAGE}/${IMAGE}.0.gz
+    zfs send ${LAST} | gzip >> ${BACKUP}/${IMAGE}/${IMAGE}.0.gz
     
     echo "Delete old snapshot"
 
@@ -319,14 +320,7 @@ do_chroot() {
     NAME=$1
 
     . /etc/default/livenet
-    timestamp=$(date +%Y-%m-%d_%H-%M-%S)
-
-    zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}@${timestamp}
-    WTF=$?
-    if [ $WTF -eq 1 ]; then
-        echo "Hai delle vecchie modifiche non salvate"
-    fi
-    
+   
     schroot -c $NAME
   
  #   chroot ${IMAGES}/${NAME}
