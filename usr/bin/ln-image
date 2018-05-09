@@ -37,19 +37,14 @@ usage()
 {
 logo
 
-echo "Utilità di creazione immagini dei client"
-
-
-   
-
-
   cat << EOF
     Options:
         --list: list available images
-        --name <image_name>               edit systems image
-        --name <image_name> --commit      commit changes from edited image
-        --name <image_name> --rollback    rollback changes from edited image
-        [--cache] --new-image <image_name> [--distr {bionic|xenial} [--arch {i386|amd64}] --create: create image
+        --name <image_name>        edit client image
+        --commit <image_name>      commit image changes
+        --rollback <image_name>    rollback image changes
+        --new-image <image_name>  --create: create image
+        --backup <image_name>      build initial install image
         --help : show this messge  
 EOF
 }
@@ -65,8 +60,12 @@ ARCH=amd64
 DISTR=bionic
 
 do_create() {
-set -x
+
+start_time=$(date +%s)
+
+#set -x
 IMAGE=$1
+echo $start_time "Start ${IMAGE} building" >> ${BASE}/livenet.log
 
 
 R=${IMAGES}/${NAME}
@@ -93,7 +92,7 @@ fi
 
 echo "Create volume for ZFS "
 zfs create ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
-zfs allow lnsrvsend send ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
+#zfs allow lnsrvsend send ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
 
 mount -o remount,exec,dev ${IMAGES}/${NAME}
 
@@ -208,9 +207,9 @@ mount -a
 chroot ${R} /bin/bash -c "useradd -u 999 -g sudo -s /bin/bash --create-home livenet"
 chroot ${R} /bin/bash -c "passwd -d livenet"
 chroot ${R} /bin/bash -c "usermod -p $(openssl passwd -1 "univr") livenet"
-chroot ${R} /bin/bash -c "apt install openssh-server parted bcache-tools gdisk"
-chroot ${R} /bin/bash -c "mkdir /root/.ssh"
-chroot ${R} /bin/bash -c "ssh-keygen -f /root/.ssh/id_rsa -t rsa -N ''"
+chroot ${R} /bin/bash -c "apt install -y openssh-server parted bcache-tools gdisk"
+#chroot ${R} /bin/bash -c "mkdir /root/.ssh"
+#chroot ${R} /bin/bash -c "ssh-keygen -f /root/.ssh/id_rsa -t rsa -N ''"
 
 cat > ${R}/etc/security/group.conf <<QWE
 #*; *; *; Al0000-2400;users,audio,cdrom,floppy,plugdev,video,fuse,dip,kvm
@@ -226,6 +225,10 @@ mount --bind ${IMAGES}/${NAME}/boot ${BOOT}/${NAME}
 #TODO ADD mount in bind to /etc/fstab
 
 do_snap ${NAME}
+
+end_time=$(date +%s)
+echo "Elapsed time: $(( $((end_time - start_time))/60 )) min."
+echo $end_time "End ${NAME} building" >> ${BASE}/livenet.log
 
 }
 
@@ -327,18 +330,16 @@ Buon lavoro ... "
 }
 showchange(){
     IMAGE=$2
-    zfs snapshot ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap1
-    zfs diff ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap0 ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap1
-    zfs destroy ${LNPZFS}/${NLVZFS}/images/${IMAGE}@snap1
+    LAST2=$(zfs list -t snapshot -o name | grep ${IMAGE} | tail -2 | head -1)
+    LAST=$(zfs list -t snapshot -o name | grep ${IMAGE} | tail -1)
+    
+    zfs diff ${LAST2} ${LAST} >> ${BASE}/${IMAGE}.changes
+
 }
 #show list of images
 do_list() {
    #find  ${IMAGES}  -maxdepth 1 -name "*-diff" -type d -exec basename \{\} \; | sed 's/-diff//' | sort
    ls ${IMAGES} | sort
-}
-
-do_go_gold(){
-    zfs rollback -r ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@now
 }
 
 
@@ -369,6 +370,7 @@ do_snap(){
     IMAGE=$1
     timestamp=$(date +%Y-%m-%d_%H-%M-%S)
     zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
+
 }
 
 
@@ -376,7 +378,22 @@ do_commit() {
     IMAGE=$1
   #  SCRIPT=script.sh
     timestamp=$(date +%Y-%m-%d_%H-%M-%S)
+    mkdir -p ${INCREASES}/${IMAGE}
+
     zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
+    COUNTSNAP=zfs list -t snapshot | grep bionic | wc -l
+    MIN=2
+    if [ $MIN -gt $COUNTSNAP ]
+    then
+        echo "Is your first commit, make backup before"
+        exit 0 
+    fi
+
+    LAST2=$(zfs list -t snapshot -o name | grep ${IMAGE}@ | tail -2 | head -1)
+    LAST=$(zfs list -t snapshot -o name | grep ${IMAGE}@ | tail -1)
+    SNAP=$(zfs list -t snapshot -o name | grep ${IMAGE}@ |tail -1 | awk -F"@" '{print $2}')
+    zfs send -i $LAST2 $LAST1 | gzip >> ${INCREASES}/${IMAGE}/${SNAP}.snapshot.gz
+
 }
 
 do_create_states() {
