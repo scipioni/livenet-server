@@ -235,7 +235,7 @@ echo FROM=${NAME} > /root/FROM
 }
 
 do_backup() {
-    set -x
+   # set -x
     IMAGE=$1
  
     start_time=$(date +%s)
@@ -253,18 +253,20 @@ do_backup() {
     LAST=$(zfs list -t snapshot -o name | grep ${IMAGE} | tail -1)
 
     mkdir -p ${BACKUP}/${IMAGE}
-
-    if [ -f ${BACKUP}/${IMAGE}/${IMAGE}.0.gz ]; then
-        echo "old ${BACKUP}/${IMAGE}/${IMAGE}.0.gz, delete old backup"
-        rm ${BACKUP}/${IMAGE}/${IMAGE}.0.gz
-        
+    
+    if [ $(ls ${BACKUP}/${IMAGE}/ | wc -l) -gt 0 ]; then
+        echo " delete old backup"
+        #todo
+        #check if variable is not empty!!!
+        rm ${BACKUP}/${IMAGE}/*.gz 
     fi
 
     echo "Build gold image from snapshot... "
     
-    zfs send ${LAST} | gzip >> ${BACKUP}/${IMAGE}/${IMAGE}.0.gz
+    timestamp=$(date +%s)
+    zfs send ${LAST} | gzip >> ${BACKUP}/${IMAGE}/${timestamp}.gz
     
-    echo "Delete old snapshot"
+    #echo "Delete old snapshot"
 
     if [ -d ${INCREASES}/${IMAGE} ]; then
         echo "old ${BACKUP}/${IMAGE}/${IMAGE}.0.gz, delete old backup"
@@ -272,6 +274,8 @@ do_backup() {
         
     fi
     
+    echo "Delete old snapshot"
+    zfs list -t snapshot -o name | grep ${IMAGE} | tac | tail -n +2 | xargs -n 1 zfs destroy -vr
    # version=0
     #[ -f ${ALLUPDATES}/list ] && version=`basename $( tail -n1 ${ALLUPDATES}/list )`
    # name=${IMAGE}_${version}.tar.gz
@@ -304,20 +308,7 @@ do_backup() {
     
 }
 
-do_nothing() {
-    logo
 
-    cd ~
-    read -p "
-    Stai per entrare in modalità modifica immagine. 
-    Puoi testare l’ambiente con ln-image -n <name> -t
-    Se non ti piace scarta le modifiche con ln-image --rollback e ricomincia. 
-    Una volta terminato, manda in produzione l’immagine con ln-image --commit. 
-    Esci dalla modalità editor con <exit>
-
-Buon lavoro ... "
-  
-}
 do_chroot() {
     NAME=$1
     cd ~
@@ -368,7 +359,7 @@ do_reset() {
 
 do_snap(){
     IMAGE=$1
-    timestamp=$(date +%Y-%m-%d_%H-%M-%S)
+    timestamp=$(date +%s)
     zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
 
 }
@@ -377,7 +368,7 @@ do_snap(){
 do_commit() {
     IMAGE=$1
   #  SCRIPT=script.sh
-    timestamp=$(date +%Y-%m-%d_%H-%M-%S)
+    timestamp=$(date +%s)
     mkdir -p ${INCREASES}/${IMAGE}
 
     zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
