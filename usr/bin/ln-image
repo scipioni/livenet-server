@@ -205,8 +205,13 @@ echo > ${R}/etc/legal
 mount -a
 #
 chroot ${R} /bin/bash -c "useradd -u 999 -g sudo -s /bin/bash --create-home livenet"
+sleep 5
 chroot ${R} /bin/bash -c "passwd -d livenet"
-chroot ${R} /bin/bash -c "usermod -p $(openssl passwd -1 "univr") livenet"
+sleep 5
+chroot ${R} /bin/bash -c "echo -e '\nunivr\nunivr' | passwd livenet"
+#chroot ${R} /bin/bash -c "usermod -p $(openssl passwd -1 "univr") livenet"
+sleep 5
+
 chroot ${R} /bin/bash -c "apt install -y openssh-server parted bcache-tools gdisk"
 #chroot ${R} /bin/bash -c "mkdir /root/.ssh"
 #chroot ${R} /bin/bash -c "ssh-keygen -f /root/.ssh/id_rsa -t rsa -N ''"
@@ -231,6 +236,8 @@ echo "Elapsed time: $(( $((end_time - start_time))/60 )) min."
 echo $end_time "End ${NAME} building" >> ${BASE}/livenet.log
 
 echo FROM=${NAME} > /root/FROM
+
+
 
 }
 
@@ -372,7 +379,7 @@ do_commit() {
     mkdir -p ${INCREASES}/${IMAGE}
 
     zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
-    COUNTSNAP=$(zfs list -t snapshot | grep bionic | wc -l)
+    COUNTSNAP=$(zfs list -t snapshot | grep ${IMAGE} | wc -l)
     MIN=2
     if [ $MIN -gt $COUNTSNAP ]
     then
