@@ -140,8 +140,6 @@ deb http://archive.ubuntu.com/ubuntu/ ${DISTR} main restricted universe multiver
 ###### Ubuntu Update Repos
 deb http://archive.ubuntu.com/ubuntu/ ${DISTR}-security main restricted universe multiverse 
 deb http://archive.ubuntu.com/ubuntu/ ${DISTR}-updates main restricted universe multiverse 
-deb http://archive.ubuntu.com/ubuntu/ ${DISTR}-proposed main restricted universe multiverse 
-deb http://archive.ubuntu.com/ubuntu/ ${DISTR}-backports main restricted universe multiverse 
 
 ###### Ubuntu Partner Repo
 deb http://archive.canonical.com/ubuntu ${DISTR} partner
