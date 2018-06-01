@@ -5,12 +5,12 @@
 LNDB=/dev/sdb
 
 # ZFS POOL or VOLUME
-LNPZFS=LNPZFS
+LNPZFS=rpool
 LNVZFS=livenet
 LNIMAGES=images
 
 # folder that contains livenet system (MOUNT POINT OF LNPZFS)
-BASE=/${LNPZFS}/${LNVZFS}
+BASE=/${LNVZFS}
 
 # PATH FOR SPECIFIC FUNCTIONS
 
