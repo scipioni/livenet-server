@@ -226,6 +226,7 @@ QWE
 zfs set sharenfs="ro=@10.1.22.0/24" ${LNPZFS}/${LNVZFS}/images/${NAME}
 mount --bind ${IMAGES}/${NAME}/boot ${BOOT}/${NAME}
 #TODO ADD mount in bind to /etc/fstab
+chroot ${R} /bin/bash -c "echo FROM=${NAME} > /root/FROM"
 
 do_snap ${NAME}
 
@@ -233,7 +234,6 @@ end_time=$(date +%s)
 echo "Elapsed time: $(( $((end_time - start_time))/60 )) min."
 echo $end_time "End ${NAME} building" >> ${BASE}/livenet.log
 
-echo FROM=${NAME} > /root/FROM
 
 
 
