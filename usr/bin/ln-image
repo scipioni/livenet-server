@@ -184,7 +184,7 @@ chmod +x ${R}/usr/sbin/policy-rc.d
 #chroot ${R} gpg --ignore-time-conflict --no-options --no-default-keyring --homedir /tmp/tmp.rpBbGhvMOp --no-auto-check-trustdb --trust-model always --keyring /etc/apt/trusted.gpg.d/livenet-client.gpg --primary-keyring /etc/apt/trusted.gpg.d/livenet-client.gpg --keyserver keyserver.ubuntu.com --recv-keys 1A9F6095
 
 echo "Updating packages ..."
-chroot ${R} apt-get -q update >/dev/null
+#chroot ${R} apt-get -q update >/dev/null
 export DEBIAN_FRONTEND=noninteractive
 mount -t proc none ${R}/proc
 
@@ -218,14 +218,18 @@ cat > ${R}/etc/security/group.conf <<QWE
 #*; *; *; Al0000-2400;users,audio,cdrom,floppy,plugdev,video,fuse,dip,kvm
 QWE
 
-cat > ${R}/root/.ssh/config <<QWE
-Host *
-StrictHostKeyChecking no
-QWE
+#cat > ${R}/root/.ssh/config <<QWE
+#Host *
+#StrictHostKeyChecking no
+#QWE
 
-zfs set sharenfs="ro=@10.1.22.0/24" ${LNPZFS}/${LNVZFS}/images/${NAME}
+zfs set sharenfs="ro" ${LNPZFS}/${LNVZFS}/images/${NAME}
 mount --bind ${IMAGES}/${NAME}/boot ${BOOT}/${NAME}
 #TODO ADD mount in bind to /etc/fstab
+
+cat >> /etc/fstab <<QQFS
+#${R}/boot ${BOOT}/${NAME} none auto,bind 0 0
+QQFS
 
 do_snap ${NAME}
 
@@ -234,9 +238,6 @@ echo "Elapsed time: $(( $((end_time - start_time))/60 )) min."
 echo $end_time "End ${NAME} building" >> ${BASE}/livenet.log
 
 echo FROM=${NAME} > /root/FROM
-
-
-
 }
 
 do_backup() {
@@ -269,7 +270,7 @@ do_backup() {
     echo "Build gold image from snapshot... "
     
     timestamp=$(date +%s)
-    zfs send ${LAST} | gzip >> ${BACKUP}/${IMAGE}/${timestamp}.gz
+    zfs send ${LAST} | pigz >> ${BACKUP}/${IMAGE}/${timestamp}.gz
     
     #echo "Delete old snapshot"
 
