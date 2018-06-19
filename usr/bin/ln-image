@@ -195,9 +195,11 @@ umount ${R}/proc
 echo "Installing livenet-client"
 chroot ${R} apt install -y git wget curl vim nano rsync nfs-common initramfs-tools python-passlib pv screen byobu lsof pigz nfs-common libpam-script xloadimage conntrack zfsutils-linux zfs-initramfs
 
-chroot ${R} /bin/bash -c "git clone https://github.com/scipioni/livenet-client.git /tmp/livenet-client"
+chroot ${R} /bin/bash -c "git clone https://github.com/scipioni/livenet-client.git /usr/share/livenet-client"
 
-chroot ${R} /bin/bash -c "cd /tmp/livenet-client; git checkout bionic; /tmp/livenet-client/ln-client-install"
+chroot ${R} /bin/bash -c "cd /usr/share/livenet-client; git checkout bionic; /usr/share/livenet-client/ln-client-install"
+ln-mng --kernel
+
 
 echo > ${R}/etc/legal
 mount -a
