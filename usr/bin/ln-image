@@ -272,7 +272,7 @@ do_backup() {
 
     echo "Build gold image from snapshot... "
     
-    timestamp=$(date +%s)
+    timestamp=$(echo ${LAST} | cut -d '@' -f 2 )
     zfs send ${LAST} | pigz >> ${BACKUP}/${IMAGE}/${timestamp}.gz
     
     #echo "Delete old snapshot"
