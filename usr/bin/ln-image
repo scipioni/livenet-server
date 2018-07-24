@@ -45,6 +45,7 @@ logo
         --rollback <image_name>    rollback image changes
         --new-image <image_name>  --create: create image
         --backup <image_name>      build initial install image
+        --iso  		build boot iso image
         --help : show this messge  
 EOF
 }
@@ -234,13 +235,14 @@ cat >> /etc/fstab <<QQFS
 #${R}/boot ${BOOT}/${NAME} none auto,bind 0 0
 QQFS
 
-do_snap ${NAME}
 
 end_time=$(date +%s)
 echo "Elapsed time: $(( $((end_time - start_time))/60 )) min."
 echo $end_time "End ${NAME} building" >> ${BASE}/livenet.log
 
 echo FROM=${NAME} > /root/FROM
+do_snap ${NAME}
+
 }
 
 do_backup() {
@@ -267,7 +269,9 @@ do_backup() {
         echo " delete old backup"
         #todo
         #check if variable is not empty!!!
-        rm ${BACKUP}/${IMAGE}/*.gz 
+        if [ $(ls ${BACKUP}/${IMAGE}/*.gz | wc -l) -gt 0 ]; then 
+		 rm ${BACKUP}/${IMAGE}/*.gz
+	fi
     fi
 
     echo "Build gold image from snapshot... "
@@ -279,12 +283,15 @@ do_backup() {
 
     if [ -d ${INCREASES}/${IMAGE} ]; then
         echo "old ${BACKUP}/${IMAGE}/${IMAGE}.0.gz, delete old backup"
-        rm ${INCREASES}/${IMAGE}/*
-        
+        if [ $(ls ${INCREASES}/${IMAGES} | wc -l) -gt 0 ]; then
+		rm ${INCREASES}/${IMAGE}/*
+        fi
     fi
     
     echo "Delete old snapshot"
+   if [ $(zfs list -t snapshot -o name | grep ${IMAGE} | tac | tail -n +2 | wc -l) -gt 0 ]; then
     zfs list -t snapshot -o name | grep ${IMAGE} | tac | tail -n +2 | xargs -n 1 zfs destroy -vr
+  fi
    # version=0
     #[ -f ${ALLUPDATES}/list ] && version=`basename $( tail -n1 ${ALLUPDATES}/list )`
    # name=${IMAGE}_${version}.tar.gz
@@ -465,25 +472,25 @@ chainloader +1
 }
 EOF
     cd ${IMAGES}
-    for i in *-diff; do
-        release=${i/-diff/}
+    for i in *; do
+        release=${i}
 
-        mount | grep -q ${release}-dev
+        mount | grep -q ${release}
         [ $? = 0 ] || continue
 
         mkdir -p ${tmp}/${release}
         cp ${BOOT}/${release}/initrd ${tmp}/${release}/initrd
         cp ${BOOT}/${release}/kernel ${tmp}/${release}/kernel
         
-        for currprof in $( chroot ${IMAGES}/${release}-dev /usr/sbin/ln-mng --profiles-list ); do
+        for currprof in $( chroot ${IMAGES}/${release} /usr/sbin/ln-mng --profiles-list ); do
             echo "Processing: image=${release} profile=${currprof}"
 
 cat >> ${tmp}/boot/grub/grub.cfg <<EOF
 submenu "Livenet ${release} profile=${currprof}" {
-menuentry "NFS profile=default root=${livenet_root_ip}:/images/${release}" {
+menuentry "NFS profile=default root=${livenet_root_ip}:${IMAGES}/${release}" {
 
   set profile=${currprof}
-  set livenet_root=${livenet_root_ip}:/images/${release}
+  set livenet_root=${livenet_root_ip}:${IMAGES}/${release}
 
   set kernel=/${release}/kernel
   set initrd=/${release}/initrd
@@ -495,10 +502,10 @@ menuentry "NFS profile=default root=${livenet_root_ip}:/images/${release}" {
   boot
   }
 
-menuentry "INSTALL profile=${currprof} root=${livenet_root_ip}:/images/${release}" {
+menuentry "INSTALL profile=${currprof} root=${livenet_root_ip}:${IMAGES}/${release}" {
 
   set profile=${currprof}
-  set livenet_root=${livenet_root_ip}:/images/${release}
+  set livenet_root=${livenet_root_ip}:${IMAGES}/${release}
 
   set kernel=/${release}/kernel
   set initrd=/${release}/initrd
@@ -595,6 +602,10 @@ while true; do
             exit 1
         fi
         ;;
+	  --iso)
+		do_iso
+		exit 0
+		;;
       *)
         shift
         if [ -n "$1" ]; then
