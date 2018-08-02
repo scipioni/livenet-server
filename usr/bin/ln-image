@@ -41,8 +41,8 @@ logo
     Options:
 	Get info
         --list: 		   		list available images
-	--lstch <image_name>			show differents from image and latest commit
-	--lstcm <image_name>			list of all commit 
+	--diff <image_name>			show differents from image and latest commit
+	--log <image_name>			list of all commit 
 
 	Edit and create
         --name <image_name>        		edit client image
@@ -61,7 +61,7 @@ EOF
 }
 
 SHORTOPTS="hvn:"
-LONGOPTS="help,version,backup,commit,snap,name:,list,iso,rmcommit,rmimage,clone,rollback,lstch,lstcm,create,arch:,distr:,new-image:,create-states:,cache"
+LONGOPTS="help,version,backup,commit,snap,name:,list,iso,rmcommit,rmimage,clone,rollback,diff,log,create,arch:,distr:,new-image:,create-states:,cache"
 
 ARGS=$(getopt -s bash --options $SHORTOPTS --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
 eval set -- "$ARGS"
@@ -446,7 +446,8 @@ do_reset() {
 
 do_snap(){
     IMAGE=$1
-    timestamp=$(date +%s)
+    #timestamp=$(date +%s)
+	timestamp=$(date +"%Y%m%d-%H:%M:%S")
     zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
 
 }
@@ -454,8 +455,9 @@ do_snap(){
 
 do_commit() {
     IMAGE=$1
-  #  SCRIPT=script.sh
-    timestamp=$(date +%s)
+    #  SCRIPT=script.sh
+    #timestamp=$(date +%s)
+	timestamp=$(date +"%Y%m%d-%H:%M:%S")
     mkdir -p ${INCREASES}/${IMAGE}
 
     zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
@@ -641,10 +643,10 @@ while true; do
         do_chroot $NAME
         exit 0
 	;;
-      --lstcm)
-	shift
-	shift
-	NAME=$1
+      --log)
+		shift
+		shift
+		NAME=$1
 	if [ -z $NAME ]; then
 		NAME=$LASTIMAGE
 	fi
@@ -741,7 +743,7 @@ while true; do
         fi
         exit 0
         ;;
-      --lstch)
+      --diff)
         showchange ${NAME}
         exit 0
 	;;
