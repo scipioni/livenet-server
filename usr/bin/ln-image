@@ -206,10 +206,10 @@ umount ${R}/proc
 echo "Installing livenet-client"
 chroot ${R} apt install -y git wget curl vim nano rsync nfs-common initramfs-tools python-passlib pv screen byobu lsof pigz nfs-common libpam-script xloadimage conntrack zfsutils-linux zfs-initramfs
 
-chroot ${R} /bin/bash -c "git clone https://github.com/scipioni/livenet-client.git /usr/share/livenet-client"
+chroot ${R} /bin/bash -c "git clone https://github.com/scipioni/livenet-client.git /tmp/livenet-client"
 
-chroot ${R} /bin/bash -c "cd /usr/share/livenet-client; git checkout bionic; /usr/share/livenet-client/ln-client-install"
-ln-mng --kernel
+chroot ${R} /bin/bash -c "cd /tmp/livenet-client; git checkout bionic; rsync -av etc/ /etc/; rsync -av usr/ /usr/"
+chroot ${R} /bin/bash -c "ln-mng --kernel"
 
 
 echo > ${R}/etc/legal
@@ -297,43 +297,6 @@ do_backup() {
     timestamp=$(echo ${LAST} | cut -d '@' -f 2 )
     zfs send ${LAST} | pigz >> ${BACKUP}/${IMAGE}/${timestamp}.gz
     
-    #echo "Delete old snapshot"
-
-    if [ -d ${INCREASES}/${IMAGE} ]; then
-       # echo "old ${BACKUP}/${IMAGE}/${IMAGE}.0.gz, delete old backup"
-        if [ $( ls ${INCREASES}/${IMAGE} | wc -l) -gt 0 ]; then
-		rm ${INCREASES}/${IMAGE}/*
-        fi
-    fi
-    
-    echo "Delete old snapshot"
-   if [ $(zfs list -t snapshot -o name | grep ${IMAGE} | tac | tail -n +2 | wc -l) -gt 0 ]; then
-    zfs list -t snapshot -o name | grep ${IMAGE} | tac | tail -n +2 | xargs -n 1 zfs destroy -vr
-  fi
-   # version=0
-    #[ -f ${ALLUPDATES}/list ] && version=`basename $( tail -n1 ${ALLUPDATES}/list )`
-   # name=${IMAGE}_${version}.tar.gz
-
-    #mkdir -p ${BACKUP}
-    #if [ -f ${BACKUP}/${name} ]; then
-    #    echo "${BACKUP}/${name} exists, exit"
-    #    exit 0
-    #fi
-
-    #echo -n "Backing up $name ..."
-    #trap "rm -f ${BACKUP}/tmp-image; exit 1" SIGINT
-    #nice tar cpP --numeric-owner --one-file-system --use-compress-program=pigz \
-    #    --exclude=./var/cache/apt/archives/* \
-    #    --exclude=./var/cache/livenet/tmp* \
-    #    --exclude=./usr/local/src/* \
-    #    --exclude=./root/.netrc* \
-    #    --exclude=./livenet/.git* \
-    #    --exclude=./tmp/* \
-    #    --exclude=./root/.bash_history \
-    #    . 2>/dev/null > ${BACKUP}/tmp-image
-    #mv ${BACKUP}/tmp-image ${BACKUP}/${name}
-    #du -h ${BACKUP}/${name}
-    
     
     
     end_time=$(date +%s)
@@ -342,6 +305,23 @@ do_backup() {
     
 }
 
+
+purge()  {
+
+     #echo "Delete old snapshot"
+
+    #if [ -d ${INCREASES}/${IMAGE} ]; then
+    #   # echo "old ${BACKUP}/${IMAGE}/${IMAGE}.0.gz, delete old backup"
+    #    if [ $( ls ${INCREASES}/${IMAGE} | wc -l) -gt 0 ]; then
+	#	rm ${INCREASES}/${IMAGE}/*
+    #    fi
+    #fi
+    
+    #echo "Delete old snapshot"
+   #if [ $(zfs list -t snapshot -o name | grep ${IMAGE} | tac | tail -n +2 | wc -l) -gt 0 ]; then
+    #zfs list -t snapshot -o name | grep ${IMAGE} | tac | tail -n +2 | xargs -n 1 zfs destroy -vr
+  #fi
+}
 clone() {
 set -x
     FROM=$1
