@@ -208,7 +208,7 @@ chroot ${R} apt install -y git wget curl vim nano rsync nfs-common initramfs-too
 
 chroot ${R} /bin/bash -c "git clone https://github.com/scipioni/livenet-client.git /tmp/livenet-client"
 
-chroot ${R} /bin/bash -c "cd /tmp/livenet-client; git checkout bionic; rsync -av etc/ /etc/; rsync -av usr/ /usr/"
+chroot ${R} /bin/bash -c "cd /tmp/livenet-client; git checkout bionic; rsync -av etc/ /etc/; rsync -av usr/ /usr/; rm -r /tmp/livenet-client/"
 chroot ${R} /bin/bash -c "ln-mng --kernel"
 
 
@@ -328,6 +328,11 @@ set -x
     TO=$2
     zfs send $(zfs list -t snapshot -o name | grep ${FROM} | tail -1) | zfs recv ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${TO}
     echo "update etc/fstab and /etc/schroot/schroot.conf"
+    sync
+    cat > ${IMAGES}/${TO}/root/${FROM} < QQFROM
+        FROM=${TO}
+    QQFROM
+    zfs set sharenfs="ro" ${LNPZFS}/${LNVZFS}/images/${NAME}
 
 }
 
