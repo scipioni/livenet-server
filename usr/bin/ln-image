@@ -306,7 +306,7 @@ do_backup() {
 }
 
 
-purge()  {
+#purge()  {
 
      #echo "Delete old snapshot"
 
@@ -321,7 +321,7 @@ purge()  {
    #if [ $(zfs list -t snapshot -o name | grep ${IMAGE} | tac | tail -n +2 | wc -l) -gt 0 ]; then
     #zfs list -t snapshot -o name | grep ${IMAGE} | tac | tail -n +2 | xargs -n 1 zfs destroy -vr
   #fi
-}
+#}
 clone() {
 set -x
     FROM=$1
