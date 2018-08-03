@@ -209,6 +209,16 @@ chroot ${R} apt install -y git wget curl vim nano rsync nfs-common initramfs-too
 chroot ${R} /bin/bash -c "git clone https://github.com/scipioni/livenet-client.git /tmp/livenet-client"
 
 chroot ${R} /bin/bash -c "cd /tmp/livenet-client; git checkout bionic; rsync -av etc/ /etc/; rsync -av usr/ /usr/; rm -r /tmp/livenet-client/"
+
+echo FROM=${NAME} > /root/FROM
+systemctl enable ln-grub
+LIVENET_ROOT_IP=$( ip -4 -o addr s dev ${INTERFACE} | grep -v secondary | cut -d" " -f7 | cut -d/ -f1 )
+
+touch ${IMAGES}/${NAME}/etc/livenet/livenet.conf.override
+echo "LIVENET_ROOT=${LIVENET_ROOT_IP}" >> ${IMAGES}/${NAME}/etc/livenet/livenet.conf.override
+
+
+
 chroot ${R} /bin/bash -c "ln-mng --kernel"
 
 
@@ -251,12 +261,7 @@ echo "Elapsed time: $(( $((end_time - start_time))/60 )) min."
 echo $end_time "End ${NAME} building" >> ${BASE}/livenet.log
 
 
-echo FROM=${NAME} > /root/FROM
-systemctl enable ln-grub
-LIVENET_ROOT_IP=$( ip -4 -o addr s dev ${INTERFACE} | grep -v secondary | cut -d" " -f7 | cut -d/ -f1 )
 
-touch ${IMAGES}/${NAME}/etc/livenet/livenet.conf.override
-echo "LIVENET_ROOT=${LIVENET_ROOT_IP}" >> ${IMAGES}/${NAME}/etc/livenet/livenet.conf.override
 
 
 do_snap ${NAME}
