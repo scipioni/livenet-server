@@ -16,7 +16,7 @@ CACHE=${IMAGES}/.cache
 if [ -f ${CACHE} ]; then
    . ${CACHE}
 else
-   LASTIMAGE=$(find  ${IMAGES}  -maxdepth 1 -name "*-diff" -type d -exec basename \{\} \; | sed 's/-diff//' | sort | head -n1)
+   LASTIMAGE=$(find  ${IMAGES}  -maxdepth 1 -type d -exec basename \{\} \; | sed 's/-diff//' | sort | head -n1)
    [ -n "${LASTIMAGE}" ] && echo "LASTIMAGE=${LASTIMAGE}" > ${CACHE}
 fi
 
@@ -39,19 +39,29 @@ logo
 
   cat << EOF
     Options:
-        --list: list available images
-        --name <image_name>        edit client image
-        --commit <image_name>      commit image changes
-        --rollback <image_name>    rollback image changes
-        --new-image <image_name>  --create: create image
-        --backup <image_name>      build initial install image
-        --iso  		build boot iso image
-        --help : show this messge  
+	Get info
+        --list: 		   		list available images
+	--diff <image_name>			show differents from image and latest commit
+	--log <image_name>			list of all commit 
+
+	Edit and create
+        --name <image_name>        		edit client image
+        --commit <image_name>      		commit image changes
+        --rollback <image_name>    		rollback image changes
+        --new-image <image_name>  --create: 	create image
+	--clone <image_name> <new_image>	create new image from exist image without commit 
+	--rmcommit <image_name> 		remove latest commit
+	--rmimage <image>			remove image
+
+        Tools for client install
+	--backup <image_name>      		build initial install image
+        --iso  					build boot iso image
+        --help : 				show this messge  
 EOF
 }
 
 SHORTOPTS="hvn:"
-LONGOPTS="help,version,backup,commit,snap,name:,list,iso,rollback,create,arch:,distr:,new-image:,create-states:,cache"
+LONGOPTS="help,version,backup,commit,snap,name:,list,iso,rmcommit,rmimage,clone,rollback,diff,log,create,arch:,distr:,new-image:,create-states:,cache"
 
 ARGS=$(getopt -s bash --options $SHORTOPTS --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
 eval set -- "$ARGS"
@@ -196,10 +206,20 @@ umount ${R}/proc
 echo "Installing livenet-client"
 chroot ${R} apt install -y git wget curl vim nano rsync nfs-common initramfs-tools python-passlib pv screen byobu lsof pigz nfs-common libpam-script xloadimage conntrack zfsutils-linux zfs-initramfs
 
-chroot ${R} /bin/bash -c "git clone https://github.com/scipioni/livenet-client.git /usr/share/livenet-client"
+chroot ${R} /bin/bash -c "git clone https://github.com/scipioni/livenet-client.git /tmp/livenet-client"
 
-chroot ${R} /bin/bash -c "cd /usr/share/livenet-client; git checkout bionic; /usr/share/livenet-client/ln-client-install"
-ln-mng --kernel
+chroot ${R} /bin/bash -c "cd /tmp/livenet-client; git checkout bionic; rsync -av etc/ /etc/; rsync -av usr/ /usr/; rm -r /tmp/livenet-client/"
+
+echo FROM=${NAME} > /root/FROM
+systemctl enable ln-grub
+LIVENET_ROOT_IP=$( ip -4 -o addr s dev ${INTERFACE} | grep -v secondary | cut -d" " -f7 | cut -d/ -f1 )
+
+touch ${IMAGES}/${NAME}/etc/livenet/livenet.conf.override
+echo "LIVENET_ROOT=${LIVENET_ROOT_IP}" >> ${IMAGES}/${NAME}/etc/livenet/livenet.conf.override
+
+
+
+chroot ${R} /bin/bash -c "ln-mng --kernel"
 
 
 echo > ${R}/etc/legal
@@ -241,11 +261,7 @@ echo "Elapsed time: $(( $((end_time - start_time))/60 )) min."
 echo $end_time "End ${NAME} building" >> ${BASE}/livenet.log
 
 
-echo FROM=${NAME} > /root/FROM
-systemctl enable ln-grub
-LIVENET_ROOT_IP=$( ip -4 -o addr s dev ${INTERFACE} | grep -v secondary | cut -d" " -f7 | cut -d/ -f1 )
 
-echo "LIVENET_ROOT=${LIVENET_ROOT_IP}" >> ${IMAGES}/${NAME}/etc/livenet/livenet.conf.override
 
 
 do_snap ${NAME}
@@ -273,11 +289,11 @@ do_backup() {
     mkdir -p ${BACKUP}/${IMAGE}
     
     if [ $(ls ${BACKUP}/${IMAGE}/ | wc -l) -gt 0 ]; then
-        echo " delete old backup"
+        echo " rename old backup"
         #todo
         #check if variable is not empty!!!
         if [ $(ls ${BACKUP}/${IMAGE}/*.gz | wc -l) -gt 0 ]; then 
-		 rm ${BACKUP}/${IMAGE}/*.gz
+		 find ${BACKUP}/${IMAGE} -type f -exec mv '{}' '{}'.old \;
 	fi
     fi
 
@@ -285,43 +301,6 @@ do_backup() {
     
     timestamp=$(echo ${LAST} | cut -d '@' -f 2 )
     zfs send ${LAST} | pigz >> ${BACKUP}/${IMAGE}/${timestamp}.gz
-    
-    #echo "Delete old snapshot"
-
-    if [ -d ${INCREASES}/${IMAGE} ]; then
-       # echo "old ${BACKUP}/${IMAGE}/${IMAGE}.0.gz, delete old backup"
-        if [ $( ls ${INCREASES}/${IMAGE} | wc -l) -gt 0 ]; then
-		rm ${INCREASES}/${IMAGE}/*
-        fi
-    fi
-    
-    echo "Delete old snapshot"
-   if [ $(zfs list -t snapshot -o name | grep ${IMAGE} | tac | tail -n +2 | wc -l) -gt 0 ]; then
-    zfs list -t snapshot -o name | grep ${IMAGE} | tac | tail -n +2 | xargs -n 1 zfs destroy -vr
-  fi
-   # version=0
-    #[ -f ${ALLUPDATES}/list ] && version=`basename $( tail -n1 ${ALLUPDATES}/list )`
-   # name=${IMAGE}_${version}.tar.gz
-
-    #mkdir -p ${BACKUP}
-    #if [ -f ${BACKUP}/${name} ]; then
-    #    echo "${BACKUP}/${name} exists, exit"
-    #    exit 0
-    #fi
-
-    #echo -n "Backing up $name ..."
-    #trap "rm -f ${BACKUP}/tmp-image; exit 1" SIGINT
-    #nice tar cpP --numeric-owner --one-file-system --use-compress-program=pigz \
-    #    --exclude=./var/cache/apt/archives/* \
-    #    --exclude=./var/cache/livenet/tmp* \
-    #    --exclude=./usr/local/src/* \
-    #    --exclude=./root/.netrc* \
-    #    --exclude=./livenet/.git* \
-    #    --exclude=./tmp/* \
-    #    --exclude=./root/.bash_history \
-    #    . 2>/dev/null > ${BACKUP}/tmp-image
-    #mv ${BACKUP}/tmp-image ${BACKUP}/${name}
-    #du -h ${BACKUP}/${name}
     
     
     
@@ -332,23 +311,99 @@ do_backup() {
 }
 
 
+#purge()  {
+
+     #echo "Delete old snapshot"
+
+    #if [ -d ${INCREASES}/${IMAGE} ]; then
+    #   # echo "old ${BACKUP}/${IMAGE}/${IMAGE}.0.gz, delete old backup"
+    #    if [ $( ls ${INCREASES}/${IMAGE} | wc -l) -gt 0 ]; then
+	#	rm ${INCREASES}/${IMAGE}/*
+    #    fi
+    #fi
+    
+    #echo "Delete old snapshot"
+   #if [ $(zfs list -t snapshot -o name | grep ${IMAGE} | tac | tail -n +2 | wc -l) -gt 0 ]; then
+    #zfs list -t snapshot -o name | grep ${IMAGE} | tac | tail -n +2 | xargs -n 1 zfs destroy -vr
+  #fi
+#}
+clone() {
+set -x
+    FROM=$1
+    TO=$2
+    zfs send $(zfs list -t snapshot -o name | grep ${FROM} | tail -1) | zfs recv ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${TO}
+    echo "update etc/fstab and /etc/schroot/schroot.conf"
+    sync
+    cat > ${IMAGES}/${TO}/root/${FROM} < QQFROM
+        FROM=${TO}
+    QQFROM
+    zfs set sharenfs="ro" ${LNPZFS}/${LNVZFS}/images/${NAME}
+
+}
+
 do_chroot() {
     NAME=$1
-    cd ~
+    cd /
     . /etc/default/livenet
     
     schroot -c $NAME
   
- #   chroot ${IMAGES}/${NAME}
  
 }
-showchange(){
-    IMAGE=$2
-    LAST2=$(zfs list -t snapshot -o name | grep ${IMAGE} | tail -2 | head -1)
-    LAST=$(zfs list -t snapshot -o name | grep ${IMAGE} | tail -1)
-    
-    zfs diff ${LAST2} ${LAST} >> ${BASE}/${IMAGE}.changes
 
+rmimage() {
+
+    NAME=$1
+    TEST=$(zfs list | grep ${NAME})
+    if [ -n "$TEST" ]; then
+	umount ${BASE}/images/${NAME}/boot >> /dev/null 2>&1
+	zfs umount ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
+    	zfs destroy -r ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
+   	if [ -d ${INCREASES}/${NAME} ]; then
+		rm -r ${INCREASES}/${NAME}
+	fi
+	if [ -d ${BACKUP}/${NAME} ]; then
+		rm -r ${BACKUP}/${NAME}
+	fi
+	echo "please update /etc/fstab and /etc/schroot/schroot.conf"
+    else
+	echo "$TEST not exist"
+    fi
+}
+
+
+rmcommit() {
+     NAME=$1
+     TEST=$(zfs list -t snapshot -o name | grep ${NAME})
+     if [ -n "$TEST" ]; then
+	
+	T2=$(zfs list -t snapshot -o name | grep ${NAME} | tail -2 | head -1 | cut -d"@" -f2)
+	T=$(zfs list -t snapshot -o name | grep ${NAME} | tail -1 | cut -d"@" -f2)
+	if [ ${T2} -ne ${T} ] && [ -n $T ] && [ -n $T2 ]; then
+		rm ${INCREASES}/${NAME}/${T}.snapshot.gz
+        	zfs destroy -r $(zfs list -t snapshot -o name | grep ${NAME} | tail -1 )
+        	echo "please update /etc/fstab and /etc/schroot/schroot.conf"
+	fi
+    else
+        echo "$TEST not exist"
+    fi
+
+}
+do_lstcm() {
+   NAME=$1
+   echo "List of all commit for $NAME "
+   zfs list -t snapshot -o name | grep ${NAME}
+}
+showchange(){
+    IMAGE=$1
+    #LAST2=$(zfs list -t snapshot -o name | grep ${IMAGE} | tail -2 | head -1)
+    
+    LAST2=$(zfs list -t snapshot -o name | grep ${IMAGE} | tail -1)
+    LAST=$(zfs list -o name | grep ${IMAGE})
+    zfs diff ${LAST2} ${LAST} > ${BASE}/${IMAGE}.changes
+    cat ${BASE}/${IMAGE}.changes
+    echo ""
+    echo "You can read this output here: ${BASE}/${IMAGE}.changes"
 }
 #show list of images
 do_list() {
@@ -382,7 +437,8 @@ do_reset() {
 
 do_snap(){
     IMAGE=$1
-    timestamp=$(date +%s)
+    #timestamp=$(date +%s)
+	timestamp=$(date +"%Y%m%d-%H:%M:%S")
     zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
 
 }
@@ -390,8 +446,9 @@ do_snap(){
 
 do_commit() {
     IMAGE=$1
-  #  SCRIPT=script.sh
-    timestamp=$(date +%s)
+    #  SCRIPT=script.sh
+    #timestamp=$(date +%s)
+	timestamp=$(date +"%Y%m%d-%H:%M:%S")
     mkdir -p ${INCREASES}/${IMAGE}
 
     zfs snapshot ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
@@ -400,7 +457,7 @@ do_commit() {
     LAST2=$(zfs list -t snapshot -o name | grep ${IMAGE} | tail -2 | head -1)
     LAST=$(zfs list -t snapshot -o name | grep ${IMAGE} | tail -1)
      
-   if [ $( zfs diff ${LAST2} ${LAST} | wc -l ) -lt 1 ]; then
+   if [ $( zfs diff ${LAST2} ${LAST} | wc -l ) -lt 4  ]; then
 	zfs destroy ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
         echo "Commit is empty"
    	exit 1
@@ -575,7 +632,59 @@ while true; do
         fi
         echo "LASTIMAGE=${NAME}" > ${CACHE}
         do_chroot $NAME
-        ;;
+        exit 0
+	;;
+      --log)
+		shift
+		shift
+		NAME=$1
+	if [ -z $NAME ]; then
+		NAME=$LASTIMAGE
+	fi
+	if [ ! -d ${IMAGES}/${NAME} ]; then
+            echo "ERRORE: ${IMAGES}/${NAME} not present"
+            exit 1
+	fi
+        echo "LASTIMAGE=${NAME}" > ${CACHE}
+
+	do_lstcm $NAME
+	exit 0
+	;;
+      --rmimage)
+	shift
+	shift
+	NAME=$1
+	if [ -z $NAME ]; then
+		echo "image name empty. Please retry with ln-image --rmimage <image name>"
+		exit 1
+	fi
+	if [ ! -d ${IMAGES}/${NAME} ]; then
+            echo "ERRORE: ${IMAGES}/${NAME} not present"
+            exit 1
+	fi
+        #echo "LASTIMAGE=${NAME}" > ${CACHE}
+
+	rmimage $NAME
+	exit 0
+	;;
+      --rmcommit)
+	shift
+	shift
+	NAME=$1
+	if [ -z $NAME ]; then
+		echo "image name empty. Please retry with ln-image --rmimage <image name>"
+		exit 1
+	fi
+	if [ ! -d ${IMAGES}/${NAME} ]; then
+            echo "ERRORE: ${IMAGES}/${NAME} not present"
+            exit 1
+	fi
+        #echo "LASTIMAGE=${NAME}" > ${CACHE}
+
+	rmcommit $NAME
+	exit 0
+	;;
+
       --cache)
         COPY_FROM_CACHE=true
         ;;
@@ -593,9 +702,42 @@ while true; do
         exit 0
         ;;
       --rollback)
+	shift
+	shift
+	NAME=$1
+	if [ -z $NAME ]; then
+		NAME=$LASTIMAGE
+	fi
+
+
+        if [ ! -d ${IMAGES}/${NAME} ]; then
+            echo "ERRORE: ${IMAGES}/${NAME} not present"
+            exit 1
+        fi
         do_reset ${NAME}
         exit 0
         ;;
+      --clone)
+	set -x
+	shift
+	shift
+	FROM=$1
+	TO=$2
+	if [ -n $FROM ] && [ -n $TO ]; then
+	        if [ -d ${IMAGES}/${FROM} ]; then
+		           clone ${FROM} ${TO}
+		else
+        	    echo "ERRORE: ${IMAGES}/${NAME} not present"
+            	    exit 1
+
+        	fi
+        fi
+        exit 0
+        ;;
+      --diff)
+        showchange ${NAME}
+        exit 0
+	;;
       --returngold)
         do_go_gold ${NAME}
         exit 0
@@ -630,7 +772,7 @@ while true; do
             echo "Error: bad argument"
             exit 1
         fi
-        usage
+#        usage
         break
         ;;
    esac
