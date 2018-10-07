@@ -287,19 +287,10 @@ do_backup() {
 
     mkdir -p ${BACKUP}/${IMAGE}
     
-    if [ $(ls ${BACKUP}/${IMAGE}/ | wc -l) -gt 0 ]; then
-        echo " rename old backup"
-        #todo
-        #check if variable is not empty!!!
-        if [ $(ls ${BACKUP}/${IMAGE}/*.gz | wc -l) -gt 0 ]; then 
-		 find ${BACKUP}/${IMAGE} -type f -exec mv '{}' '{}'.old \;
-	fi
-    fi
-
     echo "Build gold image from snapshot... "
     
     timestamp=$(echo ${LAST} | cut -d '@' -f 2 )
-    zfs send ${LAST} | pigz >> ${BACKUP}/${IMAGE}/${timestamp}.gz
+    zfs send ${LAST} | pigz >> ${BACKUP}/${IMAGE}/${IMAGE}_${timestamp}.gz
     
     
     
