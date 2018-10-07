@@ -93,7 +93,6 @@ R=${IMAGES}/${NAME}
 # QQFS
 # )
 
-
 echo "Create mount point for boot directory "
 mkdir -p ${BOOT}/${NAME}
 if [ -f ${IMAGES}/${NAME} ]; then
@@ -102,8 +101,7 @@ if [ -f ${IMAGES}/${NAME} ]; then
 fi
 
 echo "Create volume for ZFS "
-zfs create ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
-#zfs allow lnsrvsend send ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
+zfs create -o mountpoint=${IMAGES}/${NAME} ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
 
 mount -o remount,exec,dev ${IMAGES}/${NAME}
 
@@ -163,11 +161,12 @@ echo 'rootfs / rootfs rw 0 0' > ${R}/etc/mtab
 echo livenet-client > ${R}/etc/hostname
 
 # debian_chroot to have nicer prompt
-chroot ${R} lsb_release -c | awk '{print $2}' > ${R}/etc/debian_chroot
+#chroot ${R} lsb_release -c | awk '{print $2}' > ${R}/etc/debian_chroot
+echo ${NAME} > ${R}/etc/debian_chroot
 
 # adjust language locale environment
 echo "Updating packages ..."
-chroot ${R} apt-get -q update >/dev/null
+chroot ${R} apt-get -q update > /dev/null
 chroot ${R} apt-get -y -q install locales dialog
 chroot ${R} locale-gen en_GB.UTF-8
 chroot ${R} locale-gen it_IT.UTF-8
@@ -178,6 +177,7 @@ echo Europe/Rome > ${R}/etc/timezone
 cp ${R}/usr/share/zoneinfo/Europe/Rome ${R}/etc/localtime
 
 # avoid startup of services into chroot
+touch ${R}/usr/sbin/policy-rc.d
 cat > ${R}/usr/sbin/policy-rc.d <<QWE
 #!/bin/sh
 
@@ -199,12 +199,12 @@ echo "Updating packages ..."
 export DEBIAN_FRONTEND=noninteractive
 mount -t proc none ${R}/proc
 
-chroot ${R} apt-get -y install linux-generic
+chroot ${R} /bin/bash -c "apt-get -y install linux-generic"
 umount ${R}/proc
 
 #chroot ${R} apt-get -y install livenet-client
 echo "Installing livenet-client"
-chroot ${R} apt install -y git wget curl vim nano rsync nfs-common initramfs-tools python-passlib pv screen byobu lsof pigz nfs-common libpam-script xloadimage conntrack zfsutils-linux zfs-initramfs
+chroot ${R} /bin/bash -c "apt install -y git wget curl vim nano rsync nfs-common initramfs-tools python-passlib pv screen byobu lsof pigz nfs-common libpam-script xloadimage conntrack zfsutils-linux zfs-initramfs"
 
 chroot ${R} /bin/bash -c "git clone https://github.com/scipioni/livenet-client.git /tmp/livenet-client"
 
@@ -213,7 +213,6 @@ chroot ${R} /bin/bash -c "cd /tmp/livenet-client; git checkout bionic; rsync -av
 echo FROM=${NAME} > /root/FROM
 systemctl enable ln-grub
 LIVENET_ROOT_IP=$( ip -4 -o addr s dev ${INTERFACE} | grep -v secondary | cut -d" " -f7 | cut -d/ -f1 )
-
 touch ${IMAGES}/${NAME}/etc/livenet/livenet.conf.override
 echo "LIVENET_ROOT=${LIVENET_ROOT_IP}" >> ${IMAGES}/${NAME}/etc/livenet/livenet.conf.override
 
@@ -258,7 +257,7 @@ QQFS
 
 end_time=$(date +%s)
 echo "Elapsed time: $(( $((end_time - start_time))/60 )) min."
-echo $end_time "End ${NAME} building" >> ${BASE}/livenet.log
+echo $end_time "End ${NAME} building" >> ${BASE}/$NAME.log
 
 
 
