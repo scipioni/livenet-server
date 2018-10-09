@@ -23,13 +23,15 @@ description=livenet gold
 directory=${IMAGES}/${IMAGE_NAME}
 QQSCHROOT
 
+	MOUNTPOINT=$(zfs get mountpoint $LNPZFS/$LNVZFS/$LNIMAGES/$IMAGE_NAME -o value | tail -1)
 
 	#it is mounted?
 	if [ $(zfs get mounted $LNPZFS/$LNVZFS/$LNIMAGES/$IMAGE_NAME -o value | tail -1) = "yes" ]; then
 		echo "ok volume mounted"
-		mount --bind ${MOUNTPOINT}/boot /livenet/boot/${IMAGE_NAME}
+		if [ ! "$(ls -A ${MOUNTPOINT}/boot)" ]; then
+			mount --bind ${MOUNTPOINT}/boot /livenet/boot/${IMAGE_NAME}
+		fi
 	else
-		MOUNTPOINT=$(zfs get mountpoint $LNPZFS/$LNVZFS/$LNIMAGES/$IMAGE_NAME -o value | tail -1)
 		if [ ! -z $MOUNTPOINT ]; then
 			if [ -d ${MOUNTPOINT} ]; then
 				rm -r ${MOUNTPOINT}/
