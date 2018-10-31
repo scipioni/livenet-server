@@ -291,12 +291,8 @@ do_backup() {
     
     timestamp=$(echo ${LAST} | cut -d '@' -f 2 )
     zfs send ${LAST} | pigz >> ${BACKUP}/${IMAGE}/${IMAGE}_${timestamp}.gz
-    
-    
-    
     end_time=$(date +%s)
     echo "Elapsed time: $(( $((end_time - start_time))/60 )) min."
-
     
 }
 
@@ -318,16 +314,23 @@ do_backup() {
   #fi
 #}
 clone() {
-set -x
-    FROM=$1
+    FROM=$1  
     TO=$2
-    zfs send $(zfs list -t snapshot -o name | grep ${FROM} | tail -1) | zfs recv ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${TO}
-    echo "update etc/fstab and /etc/schroot/schroot.conf"
-    sync
-    cat > ${IMAGES}/${TO}/root/${FROM} < QQFROM
-        FROM=${TO}
-    QQFROM
-    zfs set sharenfs="ro" ${LNPZFS}/${LNVZFS}/images/${NAME}
+    echo "Cloning $FROM new $TO ..."
+    echo "Get last commit of $FROM"
+    LAST=$(zfs list -t snapshot -o name | grep ${FROM} | tail -1)
+    echo $LAST
+    PATH=${LNPZFS}/${LNVZFS}/${LNIMAGES}/${TO}
+    echo $PATH
+    zfs send $LAST | zfs recv ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${TO}
+    echo "updating etc/fstab and /etc/schroot/schroot.conf ..."
+    /usr/bin/ln-image-srv
+    if [ -d /livenet/images/$TO ] && [ -d /livenet/boot/$TO ]; then
+            echo "OK image $TO was created"
+    else
+        echo "something wrong, please contact your system admin and check the system"
+    fi
+
 
 }
 
@@ -398,7 +401,9 @@ showchange(){
 #show list of images
 do_list() {
    #find  ${IMAGES}  -maxdepth 1 -name "*-diff" -type d -exec basename \{\} \; | sed 's/-diff//' | sort
-   ls ${IMAGES} | sort
+   #ls ${IMAGES} | sort
+   zfs  list -o name,used | grep z-images/livenet/images/ |  grep -oE "[^/]+$"
+   
 }
 
 
