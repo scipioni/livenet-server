@@ -1,0 +1,60 @@
+#!/bin/bash
+CONFIG_FILE=/etc/vms.d/vms.conf
+
+function do_parse() {
+    SECTION=$1
+    unset name master update dsks local
+    eval $( sed -e 's/[[:space:]]*\=[[:space:]]*/=/g' \
+        -e 's/;.*$//' \
+        -e 's/[[:space:]]*$//' \
+        -e 's/^[[:space:]]*//' \
+        -e "s/^\(.*\)=\([^\"']*\)$/\1=\"\2\"/" \
+       < $CONFIG_FILE \
+        | sed -n -e "/^\[$SECTION\]/,/^\s*\[/{/^[^;].*\=.*/p;}" )
+    dsks=$(echo ${dsks:1:-1} )
+}
+
+function do_help {
+cat <<EOF
+
+--help,-h: help
+--send [name of vm]
+EOF
+}
+
+function do_send {
+
+    LAST=$(zfs list -t snapshot -o name | grep ${name} | tail -1) 
+    zfs send $LAST 
+}
+
+PROGNAME=${0##*/}
+PROGVERSION=0.1.0
+SHORTOPTS="h"
+LONGOPTS="help,send"
+ARGS=$(getopt -s bash --options $SHORTOPTS --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
+
+if [ $? -ne 0 ]; then
+    # bad argument
+    exit 1
+fi
+eval set -- "$ARGS"
+
+while true; do
+  case $1 in 
+    -h|--help)
+       do_help
+       exitt 0
+       ;;
+    --send)
+       shift
+       name=$2
+       do_send $name
+       ;;
+     *)
+	shift
+	break
+	;;
+      esac
+	shift
+done	
