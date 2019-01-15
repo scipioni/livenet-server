@@ -49,7 +49,8 @@ logo
         --commit <image_name>      		commit image changes
         --rollback <image_name>    		rollback image changes
         --new-image <image_name>  --create: 	create image
-	--clone <image_name> <new_image>	create new image from exist image without commit 
+	--clone <image_name> <new_image>	create new image from exist image without commit
+    --build-updates <image_name>        you can rebuild all update packages from first snapshot
 	--rmcommit <image_name> 		remove latest commit
 	--rmimage <image>			remove image
 
@@ -61,7 +62,7 @@ EOF
 }
 
 SHORTOPTS="hvn:"
-LONGOPTS="help,version,backup,commit,snap,name:,list,iso,rmcommit,rmimage,clone,rollback,diff,log,create,arch:,distr:,new-image:,create-states:,cache"
+LONGOPTS="help,version,backup,commit,snap,name:,list,iso,rmcommit,rmimage,clone,rollback,diff,build-updates,log,create,arch:,distr:,new-image:,create-states:,cache"
 
 ARGS=$(getopt -s bash --options $SHORTOPTS --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
 eval set -- "$ARGS"
@@ -312,18 +313,17 @@ do_backup() {
 #     #zfs list -t snapshot -o name | grep ${IMAGE} | tac | tail -n +2 | xargs -n 1 zfs destroy -vr
 #   #fi
 # #}
-clone() {
+do_clone() {
     FROM=$1  
     TO=$2
     echo "Cloning $FROM new $TO ..."
     echo "Get last commit of $FROM"
     LAST=$(zfs list -t snapshot -o name | grep ${FROM} | tail -1)
-    echo $LAST
-    PATH=${LNPZFS}/${LNVZFS}/${LNIMAGES}/${TO}
-    echo $PATH
+  #  echo $LAST
+   # echo $PATH
     zfs send $LAST | zfs recv ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${TO}
     echo "updating etc/fstab and /etc/schroot/schroot.conf ..."
-    /usr/bin/ln-image-srv
+    #/usr/bin/ln-image-srv
     if [ -d /livenet/images/$TO ] && [ -d /livenet/boot/$TO ]; then
             echo "OK image $TO was created"
     else
@@ -348,22 +348,22 @@ rmimage() {
     NAME=$1
     TEST=$(zfs list | grep ${NAME})
     if [ -n "$TEST" ]; then
-	umount ${BASE}/images/${NAME}/boot >> /dev/null 2>&1
-	zfs umount ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
+	    umount ${BASE}/images/${NAME}/boot >> /dev/null 2>&1
+	    zfs umount ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
     	zfs destroy -r ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
-   	if [ -d ${INCREASES}/${NAME} ]; then
-		rm -r ${INCREASES}/${NAME}
-	fi
-	if [ -d ${BACKUP}/${NAME} ]; then
-		rm -r ${BACKUP}/${NAME}
-	fi
-	echo "please update /etc/fstab and /etc/schroot/schroot.conf"
+    	if [ -d ${INCREASES}/${NAME} ]; then
+		    rm -r ${INCREASES}/${NAME}
+	    fi
+	    if [ -d ${BACKUP}/${NAME} ]; then
+	    	rm -r ${BACKUP}/${NAME}
+    	fi
+	    echo "please update /etc/fstab and /etc/schroot/schroot.conf"
     else
-	echo "$TEST not exist"
+	    echo "$TEST not exist"
     fi
 }
 
-
+#todo
 rmcommit() {
      NAME=$1
      TEST=$(zfs list -t snapshot -o name | grep ${NAME})
@@ -441,8 +441,56 @@ do_list() {
    #find  ${IMAGES}  -maxdepth 1 -name "*-diff" -type d -exec basename \{\} \; | sed 's/-diff//' | sort
    #ls ${IMAGES} | sort
    #zfs  list -o name,used,sharenfs,mounted | grep /livenet/images/ |  grep -oE "[^/]+$"
-   echo -e "IMAGE DISK_USED SHARE_STATUS MOUNT_STATUS\n"$(zfs  list -o name,used,sharenfs,mounted | grep livenet/images/) | grep -oE "[^/]+$" | sed 's/ /.|./g' | column -s '.' -t
+   #echo -e "IMAGE DISK_USED SHARE_STATUS MOUNT_STATUS\n"$(zfs  list -o name,used,sharenfs,mounted | grep livenet/images/) | grep -oE "[^/]+$" | sed 's/ /.|./g' | column -s '.' -t
    
+
+
+   
+   echo "List of all images in the system "
+   #printf "%sZFS_SNAP SIZE\n$(zfs  list -o name,used -t snapshot | grep alfa-lab)" |  grep -oE "[^/]+$" | sed -Er 's:[[:space:]]+: :g' |  sed 's/ /.|./g' | column -s '.' -t
+
+   EXTENSION=.gz
+
+
+   i=1
+   #zfs list -o name -t snapshot| grep alfa | grep -oE "[^/]+$" | cut -d "@" -f 2 | tail -n +2
+   #zfs list -o name,used -t snapshot | grep alfa-lab |  grep -oE "[^/]+$" | sed -Er 's:[[:space:]]+: :g' | tail -n +2
+
+   for image in $(zfs list -o name | grep livenet/images | grep -oE "[^/]+$" | cut -d "@" -f 2 | tail -n +2); do
+  
+    #print head of table
+	if [ "$i" -eq "1" ]; then
+		printf "%sID %4sIMAGE %5sNFS_ST %5sMNT_ST %5s DISK_USED%5sBACKUPS %5s UPDATES \n"
+	fi
+	
+    #numbers of available updates in zfs
+    ZFS_UPDATES=$(zfs list -t snapshot | grep $image | wc -l)
+    N_UPDATES="0"
+    #numbers of available update packages
+    if [ -d ${INCREASES}/${image} ]; then
+        N_UPDATES=$(ls ${INCREASES}/${image} | wc -l )
+    fi
+    N_BACKUPS="0"
+    #numbers of available backups,quota disk, mount status, share nfs status
+    if [ -d ${BACKUP}/${image} ]; then
+        N_BACKUPS=$(ls ${BACKUP}/${image} | wc -l )
+    fi
+    DSK_USED=$(zfs list -o name,used | grep livenet/images/${image} | awk '{print $2}')
+    MOUNT_ST=$(zfs list -o name,mounted | grep livenet/images/${image} | awk '{print $2}')
+    SHARE_ST=$(zfs list -o name,sharenfs | grep livenet/images/${image} | awk '{print $2}')
+
+
+	# if [ -f ${INCREASES}/${snap}.${EXTENSION} ]; then
+	
+	# 	FILE=${PATH_UPDATE}/${snap}.${EXTENSION}
+	# 	FILESIZE=$(du -sh ${FILE} | cut -d '/' -f 1 | sed -Er 's:[[:space:]]+: :g')
+	# 	printf "%s${i} %$((5-${#i}))s${snap} %18syes %$((17-${#FILESIZE}))s${FILESIZE}\n"
+	# else
+		printf "%s${i} %$((5-${#i}))s${image}%5s${SHARE_ST}%$((12-${#SHARE_ST}))s${MOUNT_ST}%10s${DSK_USED}%11s${N_BACKUPS}%11s${N_UPDATES}\n"
+	 
+	# fi
+	i=$((i+1))
+   done
 }
 
 
@@ -467,6 +515,58 @@ do_reset() {
     LAST_SNAP=$(zfs list -t snapshot -o name -s creation -r ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE} | tail -1)
     zfs rollback ${LAST_SNAP}
 
+}
+
+do_build_updates() {
+    IMAGE=$1
+    
+    if [ -n ${IMAGE} ]; then
+        if [ ! $(zfs list -o name | grep ${IMAGE} | grep ${LNIMAGES} | wc -l ) -gt 0 ]; then
+            echo "image not exists"
+            exit 1
+        fi
+    fi
+    N_SNAPSHOT=$(zfs list -t snapshot | grep $IMAGE | wc -l )
+    if [ ${N_SNAPSHOT} -lt "2" ]; then
+        echo "You have not commited yet, please commit!"
+        exit 1
+    fi
+    N_UPDATES=0
+    if [ ! -d ${INCREASES}/${IMAGE} ]; then
+        echo "You have not commited yet, please commit!"
+        mkdir -p ${INCREASES}/${IMAGE}
+    fi
+    N_UPDATES=$(ls ${INCREASES}/${IMAGE} | wc -l )
+    if [ $((${N_SNAPSHOT}-1)) -eq ${N_UPDATES} ]; then
+        echo "all is ok"
+        exit 0
+    fi
+
+    echo "rebuild update package, all available package will be delete and rebuild..."
+    echo "rebuild all packages of ${IMAGE}?"
+    read -p "Press enter to continue"
+    echo "There are ${N_UPDATES} updates now, for $(du -sh ${INCREASES}/${IMAGE}) "
+    echo "waiting until clean all ..."
+    for update in $(ls ${INCREASES}/${IMAGE}) ; do
+        echo "delete ${INCREASES}/${IMAGE}/${update} $(du -sh ${INCREASES}/${IMAGE}/${update} | awk '{print $1}')  "
+        rm ${INCREASES}/${IMAGE}/${update} 
+    done
+    echo "Rebuild update packages"
+    #rebuild updates
+       for i in `seq 1 ${N_SNAPSHOT} `;
+        do
+                if [ ${i} -lt ${N_SNAPSHOT} ]; then
+                    LAST2=$(zfs list -t snapshot -o name | grep ${IMAGE} | tail -$((${N_SNAPSHOT}-${i})) | head -1)
+                    LAST=$(zfs list -t snapshot -o name | grep ${IMAGE} | tail -$((${N_SNAPSHOT})) | head -1)
+                    SNAP=$(zfs list -t snapshot -o name | grep ${IMAGE} | cut -d "@" -f 2 | tail -$((${N_SNAPSHOT}-${i})) | head -1).snapshot.gz
+                    #echo ${SNAP}
+                    #echo "diff from ${LAST2} and ${LAST} is ${SNAP}"
+                    
+                    zfs send -i ${LAST} ${LAST2} | gzip >> ${INCREASES}/${IMAGE}/${SNAP}.snapshot.gz
+                fi
+        done 
+
+   # echo "Now there are ${N_SNAPSHOT} snaphots and $(ls ${INCREASES}/${IMAGE}/*.gz | wc -l) updates for $(du -sh ${INCREASES}/${IMAGE})"
 }
 
 do_snap(){
@@ -689,6 +789,12 @@ while true; do
 	do_lstcm $NAME
 	exit 0
 	;;
+      --build-updates)
+      shift
+      shift
+      do_build_updates $1
+      exit 0
+      ;;
       --rmimage)
 	shift
 	shift
@@ -764,9 +870,9 @@ while true; do
 	TO=$2
 	if [ -n $FROM ] && [ -n $TO ]; then
 	        if [ -d ${IMAGES}/${FROM} ]; then
-		           clone ${FROM} ${TO}
+		           do_clone ${FROM} ${TO}
 		else
-        	    echo "ERRORE: ${IMAGES}/${NAME} not present"
+        	    echo "ERRORE: ${IMAGES}/${FROM} not present"
             	    exit 1
 
         	fi
