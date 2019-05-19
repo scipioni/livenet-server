@@ -460,7 +460,7 @@ do_list() {
   
     #print head of table
 	if [ "$i" -eq "1" ]; then
-		printf "%sID %4sIMAGE %5sNFS_ST %5sMNT_ST %5s DISK_USED%5sBACKUPS %5s UPDATES \n"
+		printf "%sID %4sIMAGE %14sNFS_ST %5sMNT_ST %2s DISK_USED%3sBACKUPS %3s UPDATES \n"
 	fi
 	
     #numbers of available updates in zfs
@@ -486,7 +486,7 @@ do_list() {
 	# 	FILESIZE=$(du -sh ${FILE} | cut -d '/' -f 1 | sed -Er 's:[[:space:]]+: :g')
 	# 	printf "%s${i} %$((5-${#i}))s${snap} %18syes %$((17-${#FILESIZE}))s${FILESIZE}\n"
 	# else
-		printf "%s${i} %$((5-${#i}))s${image}%5s${SHARE_ST}%$((12-${#SHARE_ST}))s${MOUNT_ST}%10s${DSK_USED}%11s${N_BACKUPS}%11s${N_UPDATES}\n"
+		printf "%s${i} %$((5-${#i}))s${image} %$((20-${#image}))s${SHARE_ST} %$((12-${#SHARE_ST}))s${MOUNT_ST}%$((10-${#MOUNT_ST}))s${DSK_USED}%$((15-${#DSK_USED}))s${N_BACKUPS}%$((10-${#N_BACKUPS}))s${N_UPDATES}\n"
 	 
 	# fi
 	i=$((i+1))
@@ -562,7 +562,7 @@ do_build_updates() {
                     #echo ${SNAP}
                     #echo "diff from ${LAST2} and ${LAST} is ${SNAP}"
                     
-                    zfs send -i ${LAST} ${LAST2} | gzip >> ${INCREASES}/${IMAGE}/${SNAP}.snapshot.gz
+                    zfs send -i ${LAST} ${LAST2} | gzip >> ${INCREASES}/${IMAGE}/${SNAP}
                 fi
         done 
 
