@@ -280,6 +280,7 @@ do_backup() {
     echo "Available space: ${FREE}"
     echo "Size of image: ${SIZE}"
     SIZEN=${SIZE//[^0-9^,]/}
+    FREE=${FREE//[^0-9^,]/}
     FREE=$(echo $FREE | cut -d "," -f1)
     if [ ! ${FREE} -gt $(printf "%.*f\n" 0 $SIZEN) ];then
         echo "There are no available space to make backup, please clean space"
@@ -372,16 +373,13 @@ do_clone() {
     fi
 }
 
-cleanstr() {
-    local a=${1//[#]/}
-    echo "${a,,}"
-}
 ##
 # rebuild manual mountpoint in /etc/default/livenet-fstab
 #
 
 ##environment requirements mountpoint
 do_mount() {
+#set -x
     ZFSOPTS="zfs defaults,noatime 0 0"
     BINDOPTS="none auto,bind 0 0"
     cat > ${LIVENET_FSTAB} <<QWE
@@ -420,15 +418,17 @@ QWE
         echo "${IMAGES}/${i}/boot      ${BOOT}/${i}      ${BINDOPTS}" >> ${LIVENET_FSTAB}
     done
 
-
+    systemctl stop nfs-kernel-server
+    systemctl stop tftpd-hpa
     #check if config file exist
     if [[ ! -f "${LIVENET_FSTAB}" ]]; then
         echo "${LIVENET_FSTAB} not exist"
         exit 1
     fi
-   
-    while read line ; do
-        set $line
+    echo $LIVENET_FSTAB
+    cat $LIVENET_FSTAB | while read line
+    do
+        set $line > /dev/null 2>&1
         #mount zfs dataset
         if [ "$3" == "zfs" ]; then
         #check if pool is available
@@ -466,13 +466,16 @@ QWE
             mount.zfs $1 $2 > /dev/null 2>&1
         fi
 
-    done <${LIVENET_FSTAB}
+    done 
+    systemctl start nfs-kernel-server
+    systemctl start tftpd-hpa
+    echo ok, all running
 
 }
 
 
 do_chroot() {
-    do_mount
+#    do_mount
     NAME=$1
     cat /etc/schroot/schroot.conf | grep "\[$NAME\]"
     if [ $? == 1 ]; then
@@ -756,7 +759,7 @@ do_commit() {
 
     echo "Update is done..."
     echo "Create log..."
-    zfs diff ${LAST2} ${LAST} > ${BASE}/logs/${IMAGE}-${timestamp}.changes
+    zfs diff ${LAST2} ${LAST} > ${LOGS}/${IMAGE}-${timestamp}.changes
 
 }
 
@@ -779,6 +782,7 @@ do_create_states() {
 }
 
 do_iso() {
+set -x
     tmp=/tmp/cdroot
     iso=${BOOT}/livenet.iso
 
