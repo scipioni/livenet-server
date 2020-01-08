@@ -47,25 +47,26 @@ logo
         --log <image_name>              list of all commit 
 
     Edit and create
-        --name <image_name>        		edit client image
-        --commit <image_name>      		commit image changes
-        --rollback <image_name>    		rollback image changes
-        --new-image <image_name>  --create: 	create image
-        --clone <image_name> <new_image>	create new image from exist image without commit
+        --name <image_name>                     edit client image
+        --commit <image_name>                   commit image changes
+        --rollback <image_name>                 rollback image changes
+        --new-image <image_name>  --create:     create image
+        --clone <image_name> <new_image>        create new image from exist image without commit
         --build-updates <image_name>        you can rebuild all update packages from first snapshot
-        --rmcommit <image_name> 		remove latest commit
-        --rmimage <image>			remove image
+        --rmcommit <image_name>                 remove latest commit
+        --rmimage <image>                       remove image
 
         Tools
         --backup <image_name>               build initial install image
         --iso                               build boot iso image
+        --iso-efi                           build boot iso for efi system and images
         --mountenv                          mount environments volume and folder
         --help :                            show this messge  
 EOF
 }
 
 SHORTOPTS="hvn:"
-LONGOPTS="help,version,backup,commit,snap,name:,list,iso,mountenv,rmcommit,rmimage,clone,rollback,diff,build-updates,log,create,arch:,distr:,new-image:,create-states:,cache"
+LONGOPTS="help,version,backup,commit,snap,name:,list,iso,iso-efi,mountenv,rmcommit,rmimage,clone,rollback,diff,build-updates,log,create,arch:,distr:,new-image:,create-states:,cache"
 
 ARGS=$(getopt -s bash --options $SHORTOPTS --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
 eval set -- "$ARGS"
@@ -202,8 +203,6 @@ chroot ${R} /bin/bash -c "apt install -y git wget curl vim nano rsync nfs-common
 chroot ${R} /bin/bash -c "git clone https://github.com/scipioni/livenet-client.git /tmp/livenet-client"
 
 chroot ${R} /bin/bash -c "cd /tmp/livenet-client; git checkout bionic; rsync -av etc/ /etc/; rsync -av usr/ /usr/; rm -r /tmp/livenet-client/"
-chroot ${R} /bin/bash -c "apt install -y --no-install-recommends ubuntu-desktop "
-chroot ${R} /bin/bash -c "apt install -y gparted "
 
 echo FROM=${NAME} > /root/FROM
 systemctl enable ln-grub
@@ -239,7 +238,7 @@ QWE
 #StrictHostKeyChecking no
 #QWE
 
-zfs set sharenfs="ro" ${LNVZFS}/images/${NAME}
+zfs set sharenfs="ro" ${LNPZFS}/${LNVZFS}/images/${NAME}
 mount --bind ${IMAGES}/${NAME}/boot ${BOOT}/${NAME}
 #TODO ADD mount in bind to /etc/fstab
 chroot ${R} /bin/bash -c "echo FROM=${NAME} > /root/FROM"
@@ -317,7 +316,7 @@ do_backup() {
 #     if [ -d ${UPDATES}/${IMAGE} ]; then
 #        # echo "old ${BACKUP}/${IMAGE}/${IMAGE}.0.gz, delete old backup"
 #         if [ $( ls ${UPDATES}/${IMAGE} | wc -l) -gt 0 ]; then
-# 		rm ${UPDATES}/${IMAGE}/*
+#               rm ${UPDATES}/${IMAGE}/*
 #         fi
 #     fi
     
@@ -349,10 +348,10 @@ do_clone() {
         echo "There are no available space to make clone, please clean space"
     fi
     ####check if there are other image with same name
-    SIZE=$(zfs list  -r -o used ${LNIMAGES}/${TO} > /dev/null 2>&1 )
     CONFIRM="N"
+    SIZE=$(zfs list  -r -o used ${LNIMAGES}/${TO} > /dev/null 2>&1 )
     if [ $? = 0 ]; then
-        read -p "There are another image with the same name of the target, do you whant to replace? Y/N [N]" CONFIRM
+        read -p "There are another image with the same name ${TO} to the target, do you whant to replace? Y/N [N]" CONFIRM
         case "$CONFIRM" in 
             y|Y ) echo "ok, continue";;
             n|N ) exit 1 ;;
@@ -392,17 +391,18 @@ do_mount() {
 ###### UPDATE MOUNTPOINTS
 # mountpoint for base
 #${LNVZFS} ${BASE} ${ZFSOPTS}
+#mountpoint for boot
+${LNBOOT} ${BOOT} ${ZFSOPTS}
 # mountpoint for update
 ${LNUPDATES} ${UPDATES} ${ZFSOPTS}
 # mountpoint for images
 ${LNIMAGES} ${IMAGES} ${ZFSOPTS}
-
 # mountpoint for backups
 ${LNBACKUPS} ${BACKUPS} ${ZFSOPTS}
 # mountpoint for vms
 ${LNVMS} ${VMS} ${ZFSOPTS}
 
-# mountpoint for boot
+# mountpoint for boot bind
 mkdir -p ${BOOT}
 # folder logs
 mkdir -p ${LOGS}
@@ -477,7 +477,7 @@ QWE
 
 
 do_chroot() {
-#    do_mount
+    #do_mount
     NAME=$1
     cat /etc/schroot/schroot.conf | grep "\[$NAME\]"
     if [ $? == 1 ]; then
@@ -497,18 +497,18 @@ rmimage() {
     NAME=$1
     TEST=$(zfs list | grep ${NAME})
     if [ -n "$TEST" ]; then
-	    umount ${BASE}/images/${NAME}/boot >> /dev/null 2>&1
-	    zfs umount ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
-    	zfs destroy -r ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
-    	if [ -d ${UPDATES}/${NAME} ]; then
-		    rm -r ${UPDATES}/${NAME}
-	    fi
-	    if [ -d ${BACKUP}/${NAME} ]; then
-	    	rm -r ${BACKUP}/${NAME}
-    	fi
-	    echo "please update /etc/fstab and /etc/schroot/schroot.conf"
+            umount ${BASE}/images/${NAME}/boot >> /dev/null 2>&1
+            zfs umount ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
+        zfs destroy -r ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
+        if [ -d ${UPDATES}/${NAME} ]; then
+                    rm -r ${UPDATES}/${NAME}
+            fi
+            if [ -d ${BACKUP}/${NAME} ]; then
+                rm -r ${BACKUP}/${NAME}
+        fi
+            echo "please update /etc/fstab and /etc/schroot/schroot.conf"
     else
-	    echo "$TEST not exist"
+            echo "$TEST not exist"
     fi
 }
 
@@ -517,14 +517,14 @@ rmcommit() {
      NAME=$1
      TEST=$(zfs list -t snapshot -o name | grep ${NAME})
      if [ -n "$TEST" ]; then
-	
-	T2=$(zfs list -t snapshot -o name | grep ${NAME} | tail -2 | head -1 | cut -d"@" -f2)
-	T=$(zfs list -t snapshot -o name | grep ${NAME} | tail -1 | cut -d"@" -f2)
-	if [ ${T2} -ne ${T} ] && [ -n $T ] && [ -n $T2 ]; then
-		rm ${UPDATES}/${NAME}/${T}.snapshot.gz
-        	zfs destroy -r $(zfs list -t snapshot -o name | grep ${NAME} | tail -1 )
-        	echo "please update /etc/fstab and /etc/schroot/schroot.conf"
-	fi
+
+        T2=$(zfs list -t snapshot -o name | grep ${NAME} | tail -2 | head -1 | cut -d"@" -f2)
+        T=$(zfs list -t snapshot -o name | grep ${NAME} | tail -1 | cut -d"@" -f2)
+        if [ ${T2} -ne ${T} ] && [ -n $T ] && [ -n $T2 ]; then
+                rm ${UPDATES}/${NAME}/${T}.snapshot.gz
+                zfs destroy -r $(zfs list -t snapshot -o name | grep ${NAME} | tail -1 )
+                echo "please update /etc/fstab and /etc/schroot/schroot.conf"
+        fi
     else
         echo "$TEST not exist"
     fi
@@ -541,9 +541,15 @@ do_lstcm() {
    echo -e "List of all commit for $NAME, check if exist a gz package for every zfs snapshot \n"
    PATH_UPDATE=${UPDATES}/$NAME/
    EXTENSION=snapshot.gz
-
-   NUM_UPDATE=$(ls $PATH_UPDATE | wc -l)
    NUM_ZFS=$(zfs list -o name -t snapshot | grep $NAME | tail -n +2 | wc -l)
+   NUM_UPDATE=0
+#   stat -c PATH_UPDATE > /dev/null 2>&1
+      if [ ! -d $PATH_UPDATE ]; then
+         echo "no update available"
+         exit 1
+      fi
+   NUM_UPDATE=$(ls $PATH_UPDATE | wc -l) 
+
    CREATIONTIME=$(zfs list -o name -t snapshot | grep $NAME | head -1 | cut -d "@" -f2 )
    echo -e "The image - $NAME - was created $CREATIONTIME\n"
    echo -e "There are $NUM_ZFS snapshot on zfs dataset and there $NUM_UPDATE package ready to spread\n\n"
@@ -720,7 +726,7 @@ do_build_updates() {
 do_snap(){
     IMAGE=$1
     #timestamp=$(date +%s)
-	timestamp=$(date +"%Y%m%d-%H:%M:%S")
+        timestamp=$(date +"%Y%m%d-%H:%M:%S")
     zfs snapshot ${LNIMAGES}/${IMAGE}@${timestamp}
 
 }
@@ -730,7 +736,7 @@ do_commit() {
     IMAGE=$1
     #  SCRIPT=script.sh
     #timestamp=$(date +%s)
-	timestamp=$(date +"%Y%m%d-%H:%M:%S")
+        timestamp=$(date +"%Y%m%d-%H:%M:%S")
     mkdir -p ${UPDATES}/${IMAGE}
 
     zfs snapshot ${LNIMAGES}/${IMAGE}@${timestamp}
@@ -740,9 +746,9 @@ do_commit() {
     LAST=$(zfs list -t snapshot -o name | grep ${IMAGE} | tail -1)
      
 #    if [ $( zfs diff ${LAST2} ${LAST} | wc -l ) -lt 4  ]; then
-# 	 zfs destroy ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
+#        zfs destroy ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
 #         echo "Commit is empty"
-#    	exit 1
+#       exit 1
 #    fi
 
     COUNTSNAP=$(zfs list -t snapshot | grep ${IMAGE} | wc -l)
@@ -784,6 +790,7 @@ do_create_states() {
 }
 
 do_iso() {
+
 set -x
     tmp=/tmp/cdroot
     iso=${BOOT}/livenet.iso
@@ -799,6 +806,107 @@ set -x
     mkdir -p ${tmp}/boot/grub
     cp /usr/share/grub/unicode.pf2 ${tmp}/boot
 
+    livenet_root_ip=$( ip -4 -o addr s dev ${INTERFACE} | grep -v secondary | cut -d" " -f7 | cut -d/ -f1 )
+    echo "Detected IP=${livenet_root_ip} on ${INTERFACE} interface"
+
+cat > ${tmp}/boot/grub/grub.cfg <<EOF
+if [ -s \$prefix/grubenv ]; then
+set have_grubenv=true
+load_env
+fi
+insmod part_msdos
+insmod ext2
+insmod vbe
+insmod png
+insmod coreui 
+if loadfont /boot/unicode.pf2 ; then
+  set gfxmode=1024x768
+  set gfxfont="Unifont Regular 16"
+  load_video
+  set gfxpayload=keep
+  insmod gfxterm
+  terminal_output gfxterm
+fi
+set timeout=100
+submenu "boot from hd" {
+menuentry "boot hd0,1" {
+set root=‘(hd0,1)’
+chainloader +1
+}
+menuentry "boot from hd1,1" –class os {
+set root=‘(hd1,1)’
+chainloader +1
+}
+}
+EOF
+    cd ${IMAGES}
+    for i in *; do
+        release=${i}
+
+        mount | grep -q ${release}
+        [ $? = 0 ] || continue
+
+        mkdir -p ${tmp}/${release}
+        cp ${BOOT}/${release}/initrd ${tmp}/${release}/initrd
+        cp ${BOOT}/${release}/kernel ${tmp}/${release}/kernel
+        
+        for currprof in $( chroot ${IMAGES}/${release} /usr/sbin/ln-mng --profiles-list ); do
+            echo "Processing: image=${release} profile=${currprof}"
+
+cat >> ${tmp}/boot/grub/grub.cfg <<EOF
+submenu "Livenet ${release} profile=${currprof}" {
+menuentry "NFS profile=default root=${livenet_root_ip}:${IMAGES}/${release}" {
+  set profile=${currprof}
+  set livenet_root=${livenet_root_ip}:${IMAGES}/${release}
+  set kernel=/${release}/kernel
+  set initrd=/${release}/initrd
+  search --set=kernel_path -f \$kernel
+  set root=\$kernel_path
+  linux (\$kernel_path)\$kernel ro livenet_root=\$livenet_root livenet_profile=\$profile
+  initrd (\$kernel_path)\$initrd
+  boot
+  }
+menuentry "INSTALL profile=${currprof} root=${livenet_root_ip}:${IMAGES}/${release}" {
+  set profile=${currprof}
+  set livenet_root=${livenet_root_ip}:${IMAGES}/${release}
+  set kernel=/${release}/kernel
+  set initrd=/${release}/initrd
+  search --set=kernel_path -f \$kernel
+  set root=\$kernel_path
+  linux (\$kernel_path)\$kernel ro livenet_root=\$livenet_root livenet_profile=\$profile livenet_action=install livenet_action_end=reboot
+  initrd (\$kernel_path)\$initrd
+  boot
+  }
+}
+EOF
+        done # for currprof...
+    done # for i...
+
+    grub-mkrescue --output=${iso} --modules="linux ext2 fshelp ls boot" ${tmp} >/dev/null 2>&1
+    if [ -f ${iso} ]; then
+        echo "Created iso image ${iso}"
+    else
+        echo "ERROR"
+    fi
+
+}
+
+do_iso_efi() {
+set -x
+    tmp=/tmp/cdroot
+    iso=${BOOT}/livenetefi.iso
+
+    which xorriso >/dev/null
+    if [ ! $? = 0 ]; then
+        echo "Error: xorriso package not present. Install it with 'apt-get install xorriso"
+        exit 1
+    fi
+
+    rm -fR ${tmp}
+    rm -f ${iso}
+    mkdir -p ${tmp}/boot/grub
+    cp /usr/share/grub/unicode.pf2 ${tmp}/boot
+    cp -r /usr/lib/grub/x86_64-efi/ ${tmp}/boot
     livenet_root_ip=$( ip -4 -o addr s dev ${INTERFACE} | grep -v secondary | cut -d" " -f7 | cut -d/ -f1 )
     echo "Detected IP=${livenet_root_ip} on ${INTERFACE} interface"
 
@@ -886,6 +994,10 @@ EOF
     done # for i...
 
     grub-mkrescue --output=${iso} --modules="linux ext2 fshelp ls boot" ${tmp} >/dev/null 2>&1
+
+
+ 
+
     if [ -f ${iso} ]; then
         echo "Created iso image ${iso}"
     else
@@ -938,7 +1050,7 @@ while true; do
             echo "ERRORE: ${IMAGES}/${NAME} not present"
             exit 1
         fi
-        echo "LASTIMAGE=${NAME}" > ${CACHE}
+       # echo "LASTIMAGE=${NAME}" > ${CACHE}
         do_chroot $NAME
         exit 0
         ;;
@@ -947,8 +1059,17 @@ while true; do
         shift
         NAME=$1
         OPTIONS=$2
+      #  if [ -z $NAME ]; then
+      #      NAME=$LASTIMAGE
+      #  fi
         if [ -z $NAME ]; then
-            NAME=$LASTIMAGE
+            echo -e "Please, indicate an image\n"
+            echo -e "ln-image --log <imagename>\n"
+            exit 1
+        fi
+        if [ ! -d ${IMAGES}/${NAME} ]; then
+            echo "ERRORE: ${IMAGES}/${NAME} not present"
+            exit 1
         fi
         if [ ${NAME} == "help" ]; then
             echo "help message"
@@ -957,7 +1078,7 @@ while true; do
             echo "ERRORE: ${IMAGES}/${NAME} not present"
             exit 1
         fi
-        echo "LASTIMAGE=${NAME}" > ${CACHE}
+      #  echo "LASTIMAGE=${NAME}" > ${CACHE}
 
         do_lstcm $NAME $OPTIONS
         exit 0
@@ -999,7 +1120,7 @@ while true; do
         fi
             #echo "LASTIMAGE=${NAME}" > ${CACHE}
 
-        rmcommit $NAME
+       # rmcommit $NAME
         exit 0
         ;;
 
@@ -1080,7 +1201,7 @@ while true; do
       --distr)
         shift
         DISTR=$1
-        if [ "${DISTR}" != "bionic" ] && [ "${DISTR}" != "eoan" ]; then
+        if [ "${DISTR}" != "bionic" ] && [ "${DISTR}" != "xenial" ]; then
             usage 
             exit 1
         fi
@@ -1089,12 +1210,16 @@ while true; do
         do_iso
         exit 0
         ;;
+      --iso-efi)
+        do_iso_efi
+        exit 0
+        ;;
       --mountenv)
         do_mount
         exit 0
         ;;
         *)
-        shift
+#        shift
         if [ -n "$1" ]; then
             echo "Error: bad argument, use ln-image --help"
             exit 1
@@ -1106,3 +1231,4 @@ while true; do
 done
 
 #do_chroot ${NAME}
+
