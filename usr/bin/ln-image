@@ -202,6 +202,8 @@ chroot ${R} /bin/bash -c "apt install -y git wget curl vim nano rsync nfs-common
 chroot ${R} /bin/bash -c "git clone https://github.com/scipioni/livenet-client.git /tmp/livenet-client"
 
 chroot ${R} /bin/bash -c "cd /tmp/livenet-client; git checkout bionic; rsync -av etc/ /etc/; rsync -av usr/ /usr/; rm -r /tmp/livenet-client/"
+chroot ${R} /bin/bash -c "apt install -y --no-install-recommends ubuntu-desktop "
+chroot ${R} /bin/bash -c "apt install -y gparted "
 
 echo FROM=${NAME} > /root/FROM
 systemctl enable ln-grub
@@ -237,7 +239,7 @@ QWE
 #StrictHostKeyChecking no
 #QWE
 
-zfs set sharenfs="ro" ${LNPZFS}/${LNVZFS}/images/${NAME}
+zfs set sharenfs="ro" ${LNVZFS}/images/${NAME}
 mount --bind ${IMAGES}/${NAME}/boot ${BOOT}/${NAME}
 #TODO ADD mount in bind to /etc/fstab
 chroot ${R} /bin/bash -c "echo FROM=${NAME} > /root/FROM"
@@ -634,8 +636,8 @@ do_list() {
         fi
         N_BACKUPS="0"
         #numbers of available backups,quota disk, mount status, share nfs status
-        if [ -d ${BACKUP}/${image} ]; then
-            N_BACKUPS=$(ls ${BACKUP}/${image} | wc -l )
+        if [ -d ${BACKUPS}/${image} ]; then
+            N_BACKUPS=$(ls ${BACKUPS}/${image} | wc -l )
         fi
         DSK_USED=$(zfs list -o name,used | grep ${IMAGES}/${image} | awk '{print $2}')
         MOUNT_ST=$(zfs list -o name,mounted | grep ${IMAGES}/${image} | awk '{print $2}')
@@ -1078,7 +1080,7 @@ while true; do
       --distr)
         shift
         DISTR=$1
-        if [ "${DISTR}" != "bionic" ] && [ "${DISTR}" != "xenial" ]; then
+        if [ "${DISTR}" != "bionic" ] && [ "${DISTR}" != "eoan" ]; then
             usage 
             exit 1
         fi
