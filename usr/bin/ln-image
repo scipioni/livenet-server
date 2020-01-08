@@ -465,7 +465,7 @@ QWE
         #mount in bind to boot directory
         if [ "$3" == "none" ]; then
             echo "mount --bind  $1 $2"
-            mount.zfs $1 $2 > /dev/null 2>&1
+            mount --bind $1 $2 > /dev/null 2>&1
         fi
 
     done 
