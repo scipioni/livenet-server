@@ -42,31 +42,32 @@ logo
                  'ln-image --new-image alfa-lab --distr bionic --create' 
                       to create a new image based on bionic
     Get info
-        --list                          	list available images
-        --diff <image_name>             	show differents from image and latest commit
-        --log <image_name>              	list of all commit 
+        --list                          list available images
+        --diff <image_name>             show differents from image and latest commit
+        --log <image_name>              list of all commit 
 
     Edit and create
-        --name <image_name>        		edit client image
-        --commit <image_name>      		commit image changes
-        --rollback <image_name>    		rollback image changes
-        --new-image <image_name>  --create: 	create image
-        --clone <image_name> <new_image>	create new image from exist image without commit
+        --name <image_name>                     edit client image
+        --commit <image_name>                   commit image changes
+        --rollback <image_name>                 rollback image changes
+        --new-image <image_name>  --create:     create image
+        --clone <image_name> <new_image>        create new image from exist image without commit
         --build-updates <image_name>            you can rebuild all update packages from first snapshot
-        --rmcommit <image_name> 		remove latest commit
-        --rmimage <image>			remove image
+        --rmcommit <image_name>                 remove latest commit
+        --rmimage <image>                       remove image
 
     Tools
-        --backup <image_name>              	build initial install image
-        --iso                               	build boot iso image
-        --iso-efi                           	build boot iso for efi system and images
-        --mountenv                          	mount environments volume and folder
-        --help :                            	show this messge  
+        --backup <image_name>               build initial install image
+        --iso                               build boot iso image
+        --iso-efi                           build boot iso for efi system and images
+        --mountenv                          mount environments volume and folder
+        --exports <enable|disable>          enable or disable exports services
+        --help :                            show this messge  
 EOF
 }
 
 SHORTOPTS="hvn:"
-LONGOPTS="help,version,backup,commit,snap,name:,list,iso,iso-efi,mountenv,rmcommit,rmimage,clone,rollback,diff,build-updates,log,create,arch:,distr:,new-image:,create-states:,cache"
+LONGOPTS="help,version,backup,commit,exports,name:,list,iso,iso-efi,mountenv,rmcommit,rmimage,clone,rollback,diff,build-updates,log,create,arch:,distr:,new-image:,create-states:,cache"
 
 ARGS=$(getopt -s bash --options $SHORTOPTS --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
 eval set -- "$ARGS"
@@ -316,7 +317,7 @@ do_backup() {
 #     if [ -d ${UPDATES}/${IMAGE} ]; then
 #        # echo "old ${BACKUP}/${IMAGE}/${IMAGE}.0.gz, delete old backup"
 #         if [ $( ls ${UPDATES}/${IMAGE} | wc -l) -gt 0 ]; then
-# 		rm ${UPDATES}/${IMAGE}/*
+#               rm ${UPDATES}/${IMAGE}/*
 #         fi
 #     fi
     
@@ -465,7 +466,7 @@ QWE
         #mount in bind to boot directory
         if [ "$3" == "none" ]; then
             echo "mount --bind  $1 $2"
-            mount.zfs $1 $2 > /dev/null 2>&1
+            mount --bind $1 $2 > /dev/null 2>&1
         fi
 
     done 
@@ -497,18 +498,18 @@ rmimage() {
     NAME=$1
     TEST=$(zfs list | grep ${NAME})
     if [ -n "$TEST" ]; then
-	    umount ${BASE}/images/${NAME}/boot >> /dev/null 2>&1
-	    zfs umount ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
-    	zfs destroy -r ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
-    	if [ -d ${UPDATES}/${NAME} ]; then
-		    rm -r ${UPDATES}/${NAME}
-	    fi
-	    if [ -d ${BACKUP}/${NAME} ]; then
-	    	rm -r ${BACKUP}/${NAME}
-    	fi
-	    echo "please update /etc/fstab and /etc/schroot/schroot.conf"
+            umount ${BASE}/images/${NAME}/boot >> /dev/null 2>&1
+            zfs umount ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
+        zfs destroy -r ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
+        if [ -d ${UPDATES}/${NAME} ]; then
+                    rm -r ${UPDATES}/${NAME}
+            fi
+            if [ -d ${BACKUP}/${NAME} ]; then
+                rm -r ${BACKUP}/${NAME}
+        fi
+            echo "please update /etc/fstab and /etc/schroot/schroot.conf"
     else
-	    echo "$TEST not exist"
+            echo "$TEST not exist"
     fi
 }
 
@@ -517,14 +518,14 @@ rmcommit() {
      NAME=$1
      TEST=$(zfs list -t snapshot -o name | grep ${NAME})
      if [ -n "$TEST" ]; then
-	
-	T2=$(zfs list -t snapshot -o name | grep ${NAME} | tail -2 | head -1 | cut -d"@" -f2)
-	T=$(zfs list -t snapshot -o name | grep ${NAME} | tail -1 | cut -d"@" -f2)
-	if [ ${T2} -ne ${T} ] && [ -n $T ] && [ -n $T2 ]; then
-		rm ${UPDATES}/${NAME}/${T}.snapshot.gz
-        	zfs destroy -r $(zfs list -t snapshot -o name | grep ${NAME} | tail -1 )
-        	echo "please update /etc/fstab and /etc/schroot/schroot.conf"
-	fi
+
+        T2=$(zfs list -t snapshot -o name | grep ${NAME} | tail -2 | head -1 | cut -d"@" -f2)
+        T=$(zfs list -t snapshot -o name | grep ${NAME} | tail -1 | cut -d"@" -f2)
+        if [ ${T2} -ne ${T} ] && [ -n $T ] && [ -n $T2 ]; then
+                rm ${UPDATES}/${NAME}/${T}.snapshot.gz
+                zfs destroy -r $(zfs list -t snapshot -o name | grep ${NAME} | tail -1 )
+                echo "please update /etc/fstab and /etc/schroot/schroot.conf"
+        fi
     else
         echo "$TEST not exist"
     fi
@@ -726,7 +727,7 @@ do_build_updates() {
 do_snap(){
     IMAGE=$1
     #timestamp=$(date +%s)
-	timestamp=$(date +"%Y%m%d-%H:%M:%S")
+        timestamp=$(date +"%Y%m%d-%H:%M:%S")
     zfs snapshot ${LNIMAGES}/${IMAGE}@${timestamp}
 
 }
@@ -736,7 +737,7 @@ do_commit() {
     IMAGE=$1
     #  SCRIPT=script.sh
     #timestamp=$(date +%s)
-	timestamp=$(date +"%Y%m%d-%H:%M:%S")
+        timestamp=$(date +"%Y%m%d-%H:%M:%S")
     mkdir -p ${UPDATES}/${IMAGE}
 
     zfs snapshot ${LNIMAGES}/${IMAGE}@${timestamp}
@@ -746,9 +747,9 @@ do_commit() {
     LAST=$(zfs list -t snapshot -o name | grep ${IMAGE} | tail -1)
      
 #    if [ $( zfs diff ${LAST2} ${LAST} | wc -l ) -lt 4  ]; then
-# 	 zfs destroy ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
+#        zfs destroy ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
 #         echo "Commit is empty"
-#    	exit 1
+#       exit 1
 #    fi
 
     COUNTSNAP=$(zfs list -t snapshot | grep ${IMAGE} | wc -l)
@@ -770,7 +771,13 @@ do_commit() {
     zfs diff ${LAST2} ${LAST} > ${LOGS}/${IMAGE}-${timestamp}.changes
 
 }
-
+do_exports(){
+    echo "exports"
+    
+}
+do_unexports(){
+    echo "unexports"
+}
 do_create_states() {
     SIZE=$1
     . /etc/default/livenet
@@ -1201,10 +1208,19 @@ while true; do
       --distr)
         shift
         DISTR=$1
-        if [ "${DISTR}" != "bionic" ] && [ "${DISTR}" != "xenial" ]; then
+        if [ "${DISTR}" != "bionic" ] && [ "${DISTR}" != "eoan" ]; then
             usage 
             exit 1
         fi
+        ;;
+      --exports)
+        shift
+        shift
+        OPT=$1
+        [ "${OPT}" == "enable" ] && do_exports
+
+        [ "${OPT}" == "disable" ] && do_unexports 
+        exit 0
         ;;
       --iso)
         do_iso
@@ -1231,3 +1247,4 @@ while true; do
 done
 
 #do_chroot ${NAME}
+
