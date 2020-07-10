@@ -39,29 +39,29 @@ logo
   cat << EOF
     Options:
     Example: Use 'ln-image alfa-lab' to enter in edit in "alfa-lab" image
-                 'ln-image --new-image alfa-lab --distr bionic --create' 
+                 'ln-image --new-image alfa-lab --distr bionic --create'
                       to create a new image based on bionic
     Get info
-        --list                          	list available images
-        --diff <image_name>             	show differents from image and latest commit
-        --log <image_name>              	list of all commit 
+        --list                                  list available images
+        --diff <image_name>                     show differents from image and latest commit
+        --log <image_name>                      list of all commit
 
     Edit and create
-        --name <image_name>        		edit client image
-        --commit <image_name>      		commit image changes
-        --rollback <image_name>    		rollback image changes
-        --new-image <image_name>  --create: 	create image
-        --clone <image_name> <new_image>	create new image from exist image without commit
+        --name <image_name>                     edit client image
+        --commit <image_name>                   commit image changes
+        --rollback <image_name>                 rollback image changes
+        --new-image <image_name>  --create:     create image
+        --clone <image_name> <new_image>        create new image from exist image without commit
         --build-updates <image_name>            you can rebuild all update packages from first snapshot
-        --rmcommit <image_name> 		remove latest commit
-        --rmimage <image>			remove image
+        --rmcommit <image_name>                 remove latest commit
+        --rmimage <image>                       remove image
 
     Tools
-        --backup <image_name>              	build initial install image
-        --iso                               	build boot iso image
-        --iso-efi                           	build boot iso for efi system and images
-        --mountenv                          	mount environments volume and folder
-        --help :                            	show this messge  
+        --backup <image_name>                   build initial install image
+        --iso                                   build boot iso image
+        --iso-efi                               build boot iso for efi system and images
+        --mountenv                              mount environments volume and folder
+        --help :                                show this messge
 EOF
 }
 
@@ -125,7 +125,7 @@ fi
 # hosts
 cat > ${R}/etc/hosts <<QWK
 127.0.0.1   localhost livenet-client
-${HOSTIP} ln-server 
+${HOSTIP} ln-server
 ::1     localhost ip6-localhost ip6-loopback
 ff02::1     ip6-allnodes
 ff02::2     ip6-allrouters
@@ -138,11 +138,11 @@ cat > ${R}/etc/apt/sources.list <<QWE
 #############################################################
 
 ###### Ubuntu Main Repos
-deb http://archive.ubuntu.com/ubuntu/ ${DISTR} main restricted universe multiverse 
+deb http://archive.ubuntu.com/ubuntu/ ${DISTR} main restricted universe multiverse
 
 ###### Ubuntu Update Repos
-deb http://archive.ubuntu.com/ubuntu/ ${DISTR}-security main restricted universe multiverse 
-deb http://archive.ubuntu.com/ubuntu/ ${DISTR}-updates main restricted universe multiverse 
+deb http://archive.ubuntu.com/ubuntu/ ${DISTR}-security main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu/ ${DISTR}-updates main restricted universe multiverse
 
 ###### Ubuntu Partner Repo
 deb http://archive.canonical.com/ubuntu ${DISTR} partner
@@ -151,7 +151,7 @@ QWE
 # for nfs mode
 echo 'rootfs / rootfs rw 0 0' > ${R}/etc/mtab
 
-# hostname is checked to check chroot environment (see /usr/sbin/policy-rc.d) 
+# hostname is checked to check chroot environment (see /usr/sbin/policy-rc.d)
 echo livenet-client > ${R}/etc/hostname
 
 # debian_chroot to have nicer prompt
@@ -305,7 +305,7 @@ do_backup() {
         echo "Elapsed time: $(( $((end_time - start_time))/60 )) min."
     fi
     echo "Size of backup: $(du -sh ${OUT} | cut -f1 )"
-    
+
 }
 
 
@@ -316,10 +316,10 @@ do_backup() {
 #     if [ -d ${UPDATES}/${IMAGE} ]; then
 #        # echo "old ${BACKUP}/${IMAGE}/${IMAGE}.0.gz, delete old backup"
 #         if [ $( ls ${UPDATES}/${IMAGE} | wc -l) -gt 0 ]; then
-# 		rm ${UPDATES}/${IMAGE}/*
+#               rm ${UPDATES}/${IMAGE}/*
 #         fi
 #     fi
-    
+
 #     #echo "Delete old snapshot"
 #    #if [ $(zfs list -t snapshot -o name | grep ${IMAGE} | tac | tail -n +2 | wc -l) -gt 0 ]; then
 #     #zfs list -t snapshot -o name | grep ${IMAGE} | tac | tail -n +2 | xargs -n 1 zfs destroy -vr
@@ -338,7 +338,7 @@ do_clone() {
     FS=$(df -h ${IMAGES} | awk '{print $1}' | tail -n +2)
     FST=$(stat -f -c %T ${IMAGES})
     FREE=$(zfs list -H -r -o avail $FS )
-    SIZE=$(zfs list -H -r -o used ${LNIMAGES}/${FROM} ) 
+    SIZE=$(zfs list -H -r -o used ${LNIMAGES}/${FROM} )
     echo "File System used by image repository folder: $FS, type ${FST}"
     echo "Available space: ${FREE}"
     echo "Size of image: ${SIZE}"
@@ -352,10 +352,10 @@ do_clone() {
     SIZE=$(zfs list  -r -o used ${LNIMAGES}/${TO} > /dev/null 2>&1 )
     if [ $? = 0 ]; then
         read -p "There are another image with the same name ${TO} to the target, do you whant to replace? Y/N [N]" CONFIRM
-        case "$CONFIRM" in 
+        case "$CONFIRM" in
             y|Y ) echo "ok, continue";;
             n|N ) exit 1 ;;
-            * ) echo "do nothing, exit" 
+            * ) echo "do nothing, exit"
             exit 1;;
         esac
     fi
@@ -468,7 +468,7 @@ QWE
             mount.zfs $1 $2 > /dev/null 2>&1
         fi
 
-    done 
+    done
     systemctl start nfs-kernel-server
     systemctl start tftpd-hpa
     echo ok, all running
@@ -486,10 +486,10 @@ do_chroot() {
     fi
     cd /
     . /etc/default/livenet
-    
+
     schroot -c $NAME
-  
- 
+
+
 }
 
 rmimage() {
@@ -497,18 +497,18 @@ rmimage() {
     NAME=$1
     TEST=$(zfs list | grep ${NAME})
     if [ -n "$TEST" ]; then
-	    umount ${BASE}/images/${NAME}/boot >> /dev/null 2>&1
-	    zfs umount ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
-    	zfs destroy -r ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
-    	if [ -d ${UPDATES}/${NAME} ]; then
-		    rm -r ${UPDATES}/${NAME}
-	    fi
-	    if [ -d ${BACKUP}/${NAME} ]; then
-	    	rm -r ${BACKUP}/${NAME}
-    	fi
-	    echo "please update /etc/fstab and /etc/schroot/schroot.conf"
+            umount ${BASE}/images/${NAME}/boot >> /dev/null 2>&1
+            zfs umount ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
+        zfs destroy -r ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${NAME}
+        if [ -d ${UPDATES}/${NAME} ]; then
+                    rm -r ${UPDATES}/${NAME}
+            fi
+            if [ -d ${BACKUP}/${NAME} ]; then
+                rm -r ${BACKUP}/${NAME}
+        fi
+            echo "please update /etc/fstab and /etc/schroot/schroot.conf"
     else
-	    echo "$TEST not exist"
+            echo "$TEST not exist"
     fi
 }
 
@@ -517,14 +517,14 @@ rmcommit() {
      NAME=$1
      TEST=$(zfs list -t snapshot -o name | grep ${NAME})
      if [ -n "$TEST" ]; then
-	
-	T2=$(zfs list -t snapshot -o name | grep ${NAME} | tail -2 | head -1 | cut -d"@" -f2)
-	T=$(zfs list -t snapshot -o name | grep ${NAME} | tail -1 | cut -d"@" -f2)
-	if [ ${T2} -ne ${T} ] && [ -n $T ] && [ -n $T2 ]; then
-		rm ${UPDATES}/${NAME}/${T}.snapshot.gz
-        	zfs destroy -r $(zfs list -t snapshot -o name | grep ${NAME} | tail -1 )
-        	echo "please update /etc/fstab and /etc/schroot/schroot.conf"
-	fi
+
+        T2=$(zfs list -t snapshot -o name | grep ${NAME} | tail -2 | head -1 | cut -d"@" -f2)
+        T=$(zfs list -t snapshot -o name | grep ${NAME} | tail -1 | cut -d"@" -f2)
+        if [ ${T2} -ne ${T} ] && [ -n $T ] && [ -n $T2 ]; then
+                rm ${UPDATES}/${NAME}/${T}.snapshot.gz
+                zfs destroy -r $(zfs list -t snapshot -o name | grep ${NAME} | tail -1 )
+                echo "please update /etc/fstab and /etc/schroot/schroot.conf"
+        fi
     else
         echo "$TEST not exist"
     fi
@@ -548,18 +548,18 @@ do_lstcm() {
          echo "no update available"
          exit 1
       fi
-   NUM_UPDATE=$(ls $PATH_UPDATE | wc -l) 
+   NUM_UPDATE=$(ls $PATH_UPDATE | wc -l)
 
    CREATIONTIME=$(zfs list -o name -t snapshot | grep $NAME | head -1 | cut -d "@" -f2 )
    echo -e "The image - $NAME - was created $CREATIONTIME\n"
    echo -e "There are $NUM_ZFS snapshot on zfs dataset and there $NUM_UPDATE package ready to spread\n\n"
-   
+
    i=1
 
    for snap in $(zfs list -o name -t snapshot | grep $NAME | grep -oE "[^/]+$" | cut -d "@" -f 2 | tail -n +2); do
         #SPACE=20
         #set -x
-    
+
         if [ "$i" -eq "1" ]; then
             printf "%sID %9sZFS_SNAP%-18sFILE EXIST %5s FILE_SIZE\n"
         fi
@@ -603,7 +603,7 @@ showchange(){
     echo "+ -> create"
     echo "- -> delete"
     echo ""
-    zfs diff ${LAST2} ${LAST} | egrep -v "${IMAGES}/${IMAGE}/root/.bash_history" | egrep -v "${IMAGES}/${IMAGE}/etc/debian_chroot" 
+    zfs diff ${LAST2} ${LAST} | egrep -v "${IMAGES}/${IMAGE}/root/.bash_history" | egrep -v "${IMAGES}/${IMAGE}/etc/debian_chroot"
     echo ""
 }
 #show list of images
@@ -612,10 +612,10 @@ do_list() {
    #ls ${IMAGES} | sort
    #zfs  list -o name,used,sharenfs,mounted | grep /livenet/images/ |  grep -oE "[^/]+$"
    #echo -e "IMAGE DISK_USED SHARE_STATUS MOUNT_STATUS\n"$(zfs  list -o name,used,sharenfs,mounted | grep livenet/images/) | grep -oE "[^/]+$" | sed 's/ /.|./g' | column -s '.' -t
-   
 
 
-   
+
+
    echo "List of all images in the system "
    #printf "%sZFS_SNAP SIZE\n$(zfs  list -o name,used -t snapshot | grep alfa-lab)" |  grep -oE "[^/]+$" | sed -Er 's:[[:space:]]+: :g' |  sed 's/ /.|./g' | column -s '.' -t
 
@@ -627,12 +627,12 @@ do_list() {
    #zfs list -o name,used -t snapshot | grep alfa-lab |  grep -oE "[^/]+$" | sed -Er 's:[[:space:]]+: :g' | tail -n +2
 
    for image in $(zfs list -o name | grep ${LNIMAGES} | grep -oE "[^/]+$" | cut -d "@" -f 2 | tail -n +2); do
-  
+
         #print head of table
         if [ "$i" -eq "1" ]; then
             printf "%sID %4sIMAGE %14sNFS_ST %5sMNT_ST %2s DISK_USED%3sBACKUPS %3s UPDATES \n"
         fi
-        
+
         #numbers of available updates in zfs
         ZFS_UPDATES=$(zfs list -t snapshot | grep $image | wc -l)
         N_UPDATES="0"
@@ -668,12 +668,12 @@ do_reset() {
     zfs rollback ${LAST_SNAP}
     if [ $? = 1 ]; then
       echo "oops, something was wrong. Check your zfs"
-    fi 
+    fi
 }
 
 do_build_updates() {
     IMAGE=$1
-    
+
     if [ -n ${IMAGE} ]; then
         if [ ! $(zfs list -o name | grep ${IMAGE} | grep ${LNIMAGES} | wc -l ) -gt 0 ]; then
             echo "image not exists"
@@ -703,7 +703,7 @@ do_build_updates() {
     echo "waiting until clean all ..."
     for update in $(ls ${UPDATES}/${IMAGE}) ; do
         echo "delete ${UPDATES}/${IMAGE}/${update} $(du -sh ${UPDATES}/${IMAGE}/${update} | awk '{print $1}')  "
-        rm ${UPDATES}/${IMAGE}/${update} 
+        rm ${UPDATES}/${IMAGE}/${update}
     done
     echo "Rebuild update packages"
     #rebuild updates
@@ -715,10 +715,10 @@ do_build_updates() {
                     SNAP=$(zfs list -t snapshot -o name | grep ${IMAGE} | cut -d "@" -f 2 | tail -$((${N_SNAPSHOT}-${i})) | head -1).snapshot.gz
                     #echo ${SNAP}
                     #echo "diff from ${LAST2} and ${LAST} is ${SNAP}"
-                    
+
                     zfs send -i ${LAST} ${LAST2} | gzip >> ${UPDATES}/${IMAGE}/${SNAP}
                 fi
-        done 
+        done
 
    # echo "Now there are ${N_SNAPSHOT} snaphots and $(ls ${UPDATES}/${IMAGE}/*.gz | wc -l) updates for $(du -sh ${UPDATES}/${IMAGE})"
 }
@@ -726,7 +726,7 @@ do_build_updates() {
 do_snap(){
     IMAGE=$1
     #timestamp=$(date +%s)
-	timestamp=$(date +"%Y%m%d-%H:%M:%S")
+        timestamp=$(date +"%Y%m%d-%H:%M:%S")
     zfs snapshot ${LNIMAGES}/${IMAGE}@${timestamp}
 
 }
@@ -736,7 +736,7 @@ do_commit() {
     IMAGE=$1
     #  SCRIPT=script.sh
     #timestamp=$(date +%s)
-	timestamp=$(date +"%Y%m%d-%H:%M:%S")
+        timestamp=$(date +"%Y%m%d-%H:%M:%S")
     mkdir -p ${UPDATES}/${IMAGE}
 
     zfs snapshot ${LNIMAGES}/${IMAGE}@${timestamp}
@@ -744,11 +744,11 @@ do_commit() {
    # size_of_last_snap=$(zfs list -t snapshot | sort | tail -1 | awk '{print $2}')
     LAST2=$(zfs list -t snapshot -o name | grep ${IMAGE} | tail -2 | head -1)
     LAST=$(zfs list -t snapshot -o name | grep ${IMAGE} | tail -1)
-     
+
 #    if [ $( zfs diff ${LAST2} ${LAST} | wc -l ) -lt 4  ]; then
-# 	 zfs destroy ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
+#        zfs destroy ${LNPZFS}/${LNVZFS}/${LNIMAGES}/${IMAGE}@${timestamp}
 #         echo "Commit is empty"
-#    	exit 1
+#       exit 1
 #    fi
 
     COUNTSNAP=$(zfs list -t snapshot | grep ${IMAGE} | wc -l)
@@ -756,7 +756,7 @@ do_commit() {
     if [ $MIN -gt $COUNTSNAP ]
     then
         echo "Is your first commit, make backup before"
-        exit 0 
+        exit 0
     fi
     echo "A package update for ${IMAGE} will be create..."
     LAST2=$(zfs list -t snapshot -o name | grep ${IMAGE}@ | tail -2 | head -1)
@@ -779,7 +779,7 @@ do_create_states() {
         echo "ERROR: stop service and remove ${STATES} first"
         exit 1
     fi
-    
+
     echo -n "Creating livenet states..."
     dd if=/dev/zero of=${STATES} bs=1M count=${SIZE} >/dev/null
     modprobe loop
@@ -818,7 +818,7 @@ insmod part_msdos
 insmod ext2
 insmod vbe
 insmod png
-insmod coreui 
+insmod coreui
 if loadfont /boot/unicode.pf2 ; then
   set gfxmode=1024x768
   set gfxfont="Unifont Regular 16"
@@ -849,7 +849,7 @@ EOF
         mkdir -p ${tmp}/${release}
         cp ${BOOT}/${release}/initrd ${tmp}/${release}/initrd
         cp ${BOOT}/${release}/kernel ${tmp}/${release}/kernel
-        
+
         for currprof in $( chroot ${IMAGES}/${release} /usr/sbin/ln-mng --profiles-list ); do
             echo "Processing: image=${release} profile=${currprof}"
 
@@ -919,7 +919,7 @@ insmod part_msdos
 insmod ext2
 insmod vbe
 insmod png
-insmod coreui 
+insmod coreui
 if loadfont /boot/unicode.pf2 ; then
   set gfxmode=1024x768
   set gfxfont="Unifont Regular 16"
@@ -952,7 +952,7 @@ EOF
         mkdir -p ${tmp}/${release}
         cp ${BOOT}/${release}/initrd ${tmp}/${release}/initrd
         cp ${BOOT}/${release}/kernel ${tmp}/${release}/kernel
-        
+
         for currprof in $( chroot ${IMAGES}/${release} /usr/sbin/ln-mng --profiles-list ); do
             echo "Processing: image=${release} profile=${currprof}"
 
@@ -996,7 +996,7 @@ EOF
     grub-mkrescue --output=${iso} --modules="linux ext2 fshelp ls boot" ${tmp} >/dev/null 2>&1
 
 
- 
+
 
     if [ -f ${iso} ]; then
         echo "Created iso image ${iso}"
@@ -1202,7 +1202,7 @@ while true; do
         shift
         DISTR=$1
         if [ "${DISTR}" != "bionic" ] && [ "${DISTR}" != "xenial" ]; then
-            usage 
+            usage
             exit 1
         fi
         ;;
