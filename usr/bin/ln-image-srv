@@ -1,0 +1,97 @@
+#!/bin/bash
+
+#exec these script at every server boot
+#TODO launch this script with ln-image
+
+. /etc/default/livenet
+set -x
+SCHROOTFILE="/etc/schroot/schroot.conf"
+
+makeSchrootFile(){
+        for ds in `zfs list -o name | grep $LNPZFS/$LNVZFS/$LNIMAGES/`
+        do
+                #for each ds take only the name of image
+
+                IMAGE_NAME=$(echo $ds | cut -d '/' -f 4)
+                echo $IMAGE_NAME
+                cat >> /etc/schroot/schroot.conf <<QQSCHROOT
+
+[${IMAGE_NAME}]
+type=directory
+profile=livenet
+description=livenet gold
+directory=${IMAGES}/${IMAGE_NAME}
+QQSCHROOT
+
+
+        #it is mounted?
+        if [ $(zfs get mounted $LNPZFS/$LNVZFS/$LNIMAGES/$IMAGE_NAME -o value | tail -1) = "yes" ]; then
+                echo "ok volume mounted"
+                MOUNTPOINT=$(zfs get mountpoint $LNPZFS/$LNVZFS/$LNIMAGES/$IMAGE_NAME -o value | tail -1)
+
+                if [ ! "$(ls -A /livenet/boot/${IMAGE_NAME})" ]; then
+                        mount --bind ${MOUNTPOINT}/boot /livenet/boot/${IMAGE_NAME}
+                fi
+
+        else
+                MOUNTPOINT=$(zfs get mountpoint $LNPZFS/$LNVZFS/$LNIMAGES/$IMAGE_NAME -o value | tail -1)
+
+                if [ ! -z ${MOUNTPOINT} ]; then
+                        if [ -d ${MOUNTPOINT} ]; then
+                                mkdir -p ${MOUNTPOINT}
+                                rm -r ${MOUNTPOINT}/
+                                echo "montala"
+                                zfs mount $LNPZFS/$LNVZFS/$LNIMAGES/$IMAGE_NAME
+                                zfs set sharenfs=ro $LNPZFS/$LNVZFS/$LNIMAGES/$IMAGE_NAME
+                                mount --bind ${MOUNTPOINT}/boot /livenet/boot/${IMAGE_NAME}
+                        fi
+                fi
+        fi
+done
+}
+
+checkMountShare(){
+
+        LN_DS=(backups increases boot)
+        for DS in ${LN_DS[@]}; do
+
+                #check if DS is mounted
+                echo "check if ${DS} is mounted"
+                VOLUME=${LNPZFS}/${LNVZFS}/${DS}
+                if [ $(zfs get mounted $VOLUME -o value | tail -1) = "yes" ]; then
+                        echo "ok volume mounted"
+                else
+                        MOUNTPOINT=$(zfs get mountpoint $VOLUME -o value | tail -1)
+                        if [ ! -z ${MOUNTPOINT} ]; then
+                                if [ -d ${MOUNTPOINT} ]; then
+                                        rm -r ${MOUNTPOINT}/
+                                        echo "montala"
+                                        zfs mount $VOLUME
+                                fi
+                        fi
+                fi
+
+
+                #set sharenfs
+
+                zfs set sharenfs=ro $VOLUME
+
+        done
+}
+
+
+systemctl restart tftpd-hpa
+checkMountShare
+
+
+if [ ! -f $SCHROOTFILE ]; then
+                makeSchrootFile
+else
+        if [ $(cat $SCHROOTFILE | grep livenet | wc -l) > 0 ]; then
+                rm $SCHROOTFILE
+                makeSchrootFile
+        else
+                mv $SCHROOTFILE $SCHROOTFILE.back
+                makeSchrootFile
+        fi
+fi

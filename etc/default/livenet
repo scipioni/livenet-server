@@ -1,10 +1,36 @@
-# folder that contains livenet system
-BASE=/livenet
+# Livenet environment definition
 
-# 
-IMAGES=${BASE}/images
-NFSIMAGES=/images
-BOOT=${BASE}/boot
-STATES=${BASE}/states.img
-STATES_MOUNT=${BASE}/states
-BACKUP=${IMAGES}/backup
+
+# ZFS POOL or VOLUME
+
+[zpool]
+LNPZFS=livenet
+
+#root DATASET for livenet
+[dataset]
+LNBOOT=livenet/boot
+LNIMAGES=livenet/images
+LNUPDATES=livenet/increases
+LNBACKUPS=livenet/backups
+LNVMS=livenet/vms
+
+# folder that contains livenet MOUNT POINT  (MOUNT POINT OF LNPZFS)
+
+# PATH FOR SPECIFIC FUNCTIONS
+[mountpoint]
+BASE=/livenet
+LOGS=/livenet/logs
+IMAGES=/livenet/images
+BACKUPS=/livenet/backups
+UPDATES=/livenet/updates
+BOOT=/livenet/boot
+VMS=/livenet/vms
+
+
+#SOME PARAMETERS DEFAULT 
+
+[config]
+DEFAULTPASSWD=univr
+LIVENET_FSTAB=/etc/default/livenet-fstab
+
+

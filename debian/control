@@ -10,6 +10,6 @@ Homepage: http://www.livenet.org
 
 Package: livenet-server
 Architecture: all
-Depends: ${misc:Depends}, bash (>= 2.05a-11), debootstrap, schroot, syslinux, nfs-kernel-server, tftpd-hpa, xorriso, pigz
+Depends: ${misc:Depends}, bash (>= 2.05a-11), debootstrap, schroot, syslinux, nfs-kernel-server, tftpd-hpa, xorriso, pigz, pxelinux, zfsutils-linux
 Description: Livenet server
  Install tools to create livenet server

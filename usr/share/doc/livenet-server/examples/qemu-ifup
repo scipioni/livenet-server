@@ -1,0 +1,9 @@
+#! /bin/sh
+
+# put me into /etc
+
+PATH=$PATH:/sbin:/usr/sbin
+
+brctl addif br-vms "$1"
+
+exit 0
