@@ -1,35 +1,36 @@
 # Livenet environment definition
 
-#blk device
-
-LNDB=/dev/sdb
 
 # ZFS POOL or VOLUME
-LNPZFS=z-images
-LNVZFS=livenet
-LNIMAGES=images
 
-# folder that contains livenet system (MOUNT POINT OF LNPZFS)
-BASE=/livenet
+[zpool]
+LNPZFS=livenet
+
+#root DATASET for livenet
+[dataset]
+LNBOOT=livenet/boot
+LNIMAGES=livenet/images
+LNUPDATES=livenet/increases
+LNBACKUPS=livenet/backups
+LNVMS=livenet/vms
+
+# folder that contains livenet MOUNT POINT  (MOUNT POINT OF LNPZFS)
+
 # PATH FOR SPECIFIC FUNCTIONS
+[mountpoint]
+BASE=/livenet
+LOGS=/livenet/logs
+IMAGES=/livenet/images
+BACKUPS=/livenet/backups
+UPDATES=/livenet/updates
+BOOT=/livenet/boot
+VMS=/livenet/vms
 
-IMAGES=${BASE}/images
-BACKUP=${BASE}/backups
-INCREASES=${BASE}/increases
-
-BOOT=${BASE}/boot
 
 #SOME PARAMETERS DEFAULT 
 
+[config]
 DEFAULTPASSWD=univr
+LIVENET_FSTAB=/etc/default/livenet-fstab
 
 
-#OLD config
-
-#NFSIMAGES=/images
-#STATES=${BASE}/states.img
-#STATES_MOUNT=${BASE}/states
-
-INTERFACE=ens3
-
-#HOSTIP=157.27.254.29
