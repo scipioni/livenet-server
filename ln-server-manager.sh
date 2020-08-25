@@ -10,7 +10,6 @@
 
 #echo "Check livenet parameteres in /etc/defaul/livenet"
 
-#vi /etc/default/livenet (
 
 printf '%s\n' '    __  _                           _   '
 printf '%s\n' '  / / (_)__   __ ___  _ __    ___ | |_ '
@@ -20,9 +19,9 @@ printf '%s\n' '\____/|_|  \_/  \___||_| |_| \___| \__|'
 printf '%s\n' ''
 
 echo "Utilità di installazione del sistema"
-declare CONFIG_FILE=etc/default/livenet
+declare CONFIG_FILE=/etc/default/livenet
 if [ ! -f $SOURCE ]; then
-    echo "File di configurazione di livenet non presente, installare e configurare prima di proseguire il setup"
+    echo "Check configuration file before setup"
 fi
 
 
@@ -75,7 +74,16 @@ do_create_mountpoint(){
 install() {
     echo "Installazione dei requisiti di sistema"
     #TODO check if debian, centos, etc
+    echo "update and upgrade"
+    apt update && apt upgrade -y
+    echo "Install debian requirements package"
     apt install -y bash debootstrap schroot syslinux gdisk git wget curl nfs-kernel-server tftpd-hpa xorriso pigz pxelinux zfsutils-linux
+    echo "Install docker"
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sh get-docker.sh
+    echo "Install docker compose"
+    sudo curl -L "https://github.com/docker/compose/releases/download/1.26.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    sudo chmod +x /usr/local/bin/docker-compose
 
     echo "ottenere i sorgenti e selezionare il branch"
     cd ~
@@ -265,6 +273,10 @@ while true; do
         ;;
     --initblk)
         initblk
+        exit 0
+        ;;
+    --mkmountp)
+        do_create_mountpoint
         exit 0
         ;;
     --show)

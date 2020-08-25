@@ -3,34 +3,34 @@
 
 # ZFS POOL or VOLUME
 
-[zpool]
-LNPZFS=livenet
+#[zpool]
+LNPZFS=z-livenet
 
 #root DATASET for livenet
-[dataset]
-LNBOOT=livenet/boot
-LNIMAGES=livenet/images
-LNUPDATES=livenet/increases
-LNBACKUPS=livenet/backups
-LNVMS=livenet/vms
+
+#[dataset]
+LNBOOT=z-livenet/boot
+LNIMAGES=z-livenet/images
+LNUPDATES=z-livenet/increases
+LNBACKUPS=z-livenet/backups
+LNLOGS=z-livenet/logs
+LNVMS=z-livenet/vms
 
 # folder that contains livenet MOUNT POINT  (MOUNT POINT OF LNPZFS)
-
 # PATH FOR SPECIFIC FUNCTIONS
-[mountpoint]
-BASE=/livenet
-LOGS=/livenet/logs
-IMAGES=/livenet/images
-BACKUPS=/livenet/backups
-UPDATES=/livenet/updates
-BOOT=/livenet/boot
-VMS=/livenet/vms
 
+#[mountpoint]
+BOOT=/livenet/boot
+IMAGES=/livenet/images
+UPDATES=/livenet/updates
+BACKUPS=/livenet/backups
+LOGS=/livenet/logs
+VMS=/livenet/vms
 
 #SOME PARAMETERS DEFAULT 
 
-[config]
+#[config]
 DEFAULTPASSWD=univr
 LIVENET_FSTAB=/etc/default/livenet-fstab
-
+INTERFACE=eno1
 

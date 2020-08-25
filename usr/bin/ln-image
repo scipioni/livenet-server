@@ -19,7 +19,7 @@ else
    [ -n "${LASTIMAGE}" ] && echo "LASTIMAGE=${LASTIMAGE}" > ${CACHE}
 fi
 
-INTERFACE=${INTERFACE:=ens3}
+INTERFACE=${INTERFACE:=eno1}
 
 logo(){
 
@@ -791,7 +791,6 @@ do_create_states() {
 
 do_iso() {
 
-set -x
     tmp=/tmp/cdroot
     iso=${BOOT}/livenet.iso
 
