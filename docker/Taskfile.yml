@@ -1,0 +1,26 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+  LIST: ./scripts/detect_distro.sh
+  NFSD_TEST: ./scripts/nfsd_test.sh
+
+dotenv: [".env"]
+
+tasks:
+  default:
+    cmds:
+      - bash {{ .LIST }}
+    silent: true
+  build:
+    desc: "build docker image"
+    cmds:
+      - docker build --rm --compress -t ${DOCKER_IMAGE}:${DOCKER_TAG} ./src
+  deploy:
+    desc: Start the service
+    cmds:
+      - bash {{ .NFSD_TEST }} 
+      - docker-compose up
+
